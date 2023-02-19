@@ -1,0 +1,7 @@
+{
+    "associations": {
+        "example.net": ["93.184.216.34", "INVALID_SECURITY_PIN"],
+        "example.com": ["93.184.216.34", "F2AAD73D32683B716D2A7D61B51C6D5764AB3899"],
+        "example.org": ["104.16.93.83"]
+    }
+}
