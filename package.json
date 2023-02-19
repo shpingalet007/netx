@@ -1,0 +1,22 @@
+{
+  "name": "netx",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "",
+  "main": "netx.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node example.js"
+  },
+  "author": "shpingalet007",
+  "license": "MIT",
+  "devDependencies": {
+    "chai": "^4.3.7",
+    "mocha": "^10.2.0",
+    "node-fetch": "^3.3.0",
+    "socks-proxy-agent": "^7.0.0"
+  },
+  "dependencies": {
+    "better-logging": "^5.0.0"
+  }
+}

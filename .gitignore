@@ -1,0 +1,8 @@
+# IDE files
+.idea
+
+# Folders
+node_modules
+
+# macOS specific files
+.DS_Store
