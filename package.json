@@ -1,0 +1,9 @@
+{
+  "name": "@netaxis/axis",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "",
+  "main": "main.js",
+  "author": "shpingalet007",
+  "license": "GPL-3.0-or-later"
+}
