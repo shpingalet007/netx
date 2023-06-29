@@ -5,5 +5,8 @@
   "description": "",
   "main": "main.js",
   "author": "shpingalet007",
-  "license": "GPL-3.0-or-later"
+  "license": "GPL-3.0-or-later",
+  "dependencies": {
+    "better-logging": "^5.0.0"
+  }
 }
