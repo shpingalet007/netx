@@ -176,16 +176,18 @@ export class NetAxis {
         warn: console.warn,
     }
 
-    constructor() {
-        const configurations = { ...NetAxis.defaultConfigurations, ...NetAxis.fsConfigProvider() };
-        const { debug, readonly, protectGlobal } = configurations;
+    constructor(configs) {
+        const configurations = { ...NetAxis.defaultConfigurations, ...configs };
+        const { debug, readonly, protectGlobal, listPath } = configurations;
 
-        this.config = { debug, readonly, protectGlobal };
+        this.config = { debug, readonly, protectGlobal, listPath };
 
         this.#readonly = readonly;
         this.#protectGlobal = protectGlobal;
 
-        this._list = new List(configurations.list);
+        const config = NetAxis.fsConfigProvider(listPath);
+        const list = config.list;
+        this._list = new List(list);
 
         betterLogging(this.logger);
 
@@ -215,22 +217,50 @@ export class NetAxis {
         })
     }
 
-    async use(plugin) {
-        await plugin.instantiate(this);
+    async use(plugin, options) {
+        await plugin.instantiate(this, options);
         plugin.parseConfig();
         this.plugins[plugin.name] = plugin;
     }
 
     static defaultConfigurations = {
+        listPath: 'axisrc.json',
         debug: false,
         readonly: true,
         protectGlobal: true,
     };
 
-    static fsConfigProvider() {
-        const listPath = path.join(process.cwd(), "NetAxisrc.json");
-        const list = fs.readFileSync(listPath, { encoding: "utf-8" });
+    static fsConfigProvider(listPath) {
+        const fullListPath = path.join(process.cwd(), listPath);
+        const list = fs.readFileSync(fullListPath, { encoding: "utf-8" });
 
         return JSON.parse(list);
+    }
+
+    static wrapModule(target) {
+        return new Proxy(target, {
+            apply: function (target, thisArg, args) {
+                return target(...args);
+            },
+            get: function (target, prop) {
+                if (target.__wrappedmemory?.[prop]) {
+                    return target.__wrappedmemory[prop];
+                }
+
+                if (typeof target[prop] === 'object') {
+                    return NetAxis.wrapModule(target[prop]);
+                }
+
+                return target[prop];
+            },
+            set: function (target, prop, value) {
+                if (typeof target.__wrappedmemory !== 'object') {
+                    target.__wrappedmemory = {};
+                }
+
+                target.__wrappedmemory[prop] = value;
+                return value;
+            },
+        });
     }
 }

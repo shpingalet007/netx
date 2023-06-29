@@ -1,0 +1,14 @@
+{
+  "debug": true,
+  "readonly": false,
+  "protectGlobal": false,
+  "pluginConfigs": {
+    "dnsOverride": {}
+  },
+  "list": {
+    "example.net": {
+      "ip": "93.184.216.34",
+      "pin": ["F2AAD73D32683B716D2A7D61B51C6D5764AB3898"]
+    }
+  }
+}

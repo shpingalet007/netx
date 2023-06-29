@@ -1,3 +1,5 @@
+import { NetAxis } from "./main.js";
+
 export class PluginList {
     static listParams = [];
 
@@ -51,11 +53,17 @@ export class OverridePlugin {
     config = {};
     list = {};
 
-    async instantiate(NetAxisInstance) {
-        const targetObj = this.SelfStatic.target;
+    async instantiate(axisInstance, options = {}) {
+        let targetObj = this.SelfStatic.target;
+
+        if (!options.override) {
+            const targetBaseObj = NetAxis.wrapModule(targetObj);
+            targetObj = NetAxis.wrapModule(targetObj);
+        }
+
         const mountPoint = this.SelfStatic.mountPoint;
 
-        this.NetAxisInstance = NetAxisInstance;
+        this.axisInstance = axisInstance;
 
         const overrideKeys = Object.keys(this.overrides);
 
@@ -65,12 +73,12 @@ export class OverridePlugin {
             targetObj[overrideKey] = this.overrides[overrideKey];
 
             if (mountPoint) {
-                this.NetAxisInstance[mountPoint] = targetObj;
+                this.axisInstance[mountPoint] = targetObj;
             }
         });
 
-        this.config = this.parseConfig(this.NetAxisInstance.config);
-        this.list = this.parseList(this.NetAxisInstance._list.list);
+        this.config = this.parseConfig(this.axisInstance.config);
+        this.list = this.parseList(this.axisInstance._list.list);
     }
 
     parseConfig(NetAxisConfig) {
