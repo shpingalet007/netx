@@ -54,10 +54,10 @@ export class OverridePlugin {
     list = {};
 
     async instantiate(axisInstance, options = {}) {
-        let targetObj = this.SelfStatic.target;
+        let _targetObj = this.SelfStatic.target;
+        let targetObj = {..._targetObj};
 
         if (!options.override) {
-            const targetBaseObj = NetAxis.wrapModule(targetObj);
             targetObj = NetAxis.wrapModule(targetObj);
         }
 
@@ -67,15 +67,17 @@ export class OverridePlugin {
 
         const overrideKeys = Object.keys(this.overrides);
 
-        overrideKeys.forEach((overrideKey, i) => {
-            this.sources[overrideKey] = targetObj[overrideKey];
+        for (let i = 0; i < overrideKeys.length; i++) {
+            const overrideKey = overrideKeys[i];
+
+            this.sources[overrideKey] = _targetObj[overrideKey];
 
             targetObj[overrideKey] = this.overrides[overrideKey];
+        }
 
-            if (mountPoint) {
-                this.axisInstance[mountPoint] = targetObj;
-            }
-        });
+        if (mountPoint) {
+            axisInstance[mountPoint] = targetObj;
+        }
 
         this.config = this.parseConfig(this.axisInstance.config);
         this.list = this.parseList(this.axisInstance._list.list);

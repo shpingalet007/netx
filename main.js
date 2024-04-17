@@ -1,5 +1,8 @@
 import fs from "fs";
 import path from "path";
+import * as http from "http";
+import * as https from "https";
+
 import betterLogging from "better-logging";
 
 export class List {
@@ -160,6 +163,8 @@ export class List {
 }
 
 export class NetAxis {
+    static GlobalName = "netx";
+
     #readonly = true;
     #protectGlobal = true;
     _list = {};
@@ -177,17 +182,27 @@ export class NetAxis {
     }
 
     constructor(configs) {
-        const configurations = { ...NetAxis.defaultConfigurations, ...configs };
-        const { debug, readonly, protectGlobal, listPath } = configurations;
+        this.id = (Math.random() + 1).toString(36).substring(7);
 
-        this.config = { debug, readonly, protectGlobal, listPath };
+        const configurations = { ...NetAxis.defaultConfigurations, ...configs };
+        const { debug, readonly, protectGlobal, listPath, listProvider } = configurations;
+
+        this.config = { debug, readonly, protectGlobal, listProvider };
+
+        this.config.listPath = (listPath.endsWith('.json'))
+          ? listPath
+          : path.join(listPath, NetAxis.defaultConfigurations.listPath);
 
         this.#readonly = readonly;
         this.#protectGlobal = protectGlobal;
 
-        const config = NetAxis.fsConfigProvider(listPath);
-        const list = config.list;
-        this._list = new List(list);
+        if (!listProvider) {
+            const config = NetAxis.fsConfigProvider(this.config.listPath);
+            const list = config.list;
+            this._list = new List(list);
+        } else {
+            this._list = listProvider();
+        }
 
         betterLogging(this.logger);
 
@@ -220,7 +235,7 @@ export class NetAxis {
     async use(plugin, options) {
         await plugin.instantiate(this, options);
         plugin.parseConfig();
-        this.plugins[plugin.name] = plugin;
+        this.plugins[plugin.constructor.name] = plugin;
     }
 
     static defaultConfigurations = {
@@ -262,5 +277,87 @@ export class NetAxis {
                 return value;
             },
         });
+    }
+
+    globalize(globalName = NetAxis.GlobalName) {
+        const globalParams = {};
+        globalParams._netxGlobalPoint = {
+            value: globalName,
+            writable: false,
+            configurable: !this.#protectGlobal,
+        };
+        globalParams[globalName] = {
+            value: this,
+            writable: false,
+            configurable: !this.#protectGlobal,
+        };
+
+        Object.defineProperties(global, globalParams);
+    }
+
+    unglobalize() {
+        const globalName = global._netxGlobalPoint;
+
+        if (!globalName) {
+            this.logger.warn('No Netx instance is found in global scope');
+            return;
+        }
+
+        try {
+            delete global._netxGlobalPoint;
+            delete global[globalName];
+        } catch (err) {
+            this.logger.error('Netx instance can not be unmounted from global scope');
+            this.logger.warn('If you really need to be able to remove Netx from global');
+            this.logger.warn('use protectGlobal = false, but for security reasons we do not recommend it...');
+            throw Error('Netx instance can not be unmounted from global scope');
+        }
+    }
+
+    createAgent(protocol, args) {
+        return new WrappingAgent(this, () => new http.Agent(args));
+    }
+}
+
+class WrappingAgentBase {
+    constructor(type, ...args) {
+        if (type === 'https') {
+            return new https.Agent(...args);
+        } else if (type === 'http') {
+            return new http.Agent(...args);
+        }
+    }
+}
+
+export class WrappingAgent extends WrappingAgentBase {
+    constructor(type, netx, agentCreator) {
+        super(type);
+
+        this.netx = netx;
+
+        console.log(agentCreator.toString());
+
+        this.targetAgent = agentCreator();
+        this.targetAgent.shouldLookup = true;
+    }
+
+    lookup = (...args) => this.netx.dns.lookup(...args);
+
+    addRequest(request, options) {
+        request.on('socket', socket => {
+            socket.on('secureConnect', () => {
+                const host = socket.servername;
+                const cert = socket.getPeerCertificate();
+
+                const identityCheck = this.netx.pins.checkServerIdentity(host, cert);
+
+                if (identityCheck instanceof Error) {
+                    request.emit('error', identityCheck);
+                    request.abort();
+                }
+            });
+        });
+
+        return this.targetAgent.addRequest(request, options);
     }
 }

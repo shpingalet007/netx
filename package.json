@@ -7,6 +7,12 @@
   "author": "shpingalet007",
   "license": "GPL-3.0-or-later",
   "dependencies": {
-    "better-logging": "^5.0.0"
+    "better-logging": "^5.0.0",
+    "node-fetch": "^3.3.1"
+  },
+  "devDependencies": {
+    "chai": "^4.3.7",
+    "mocha": "^10.2.0",
+    "socks-proxy-agent": "^8.0.1"
   }
 }
