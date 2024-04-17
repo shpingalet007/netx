@@ -5,8 +5,8 @@ import fs from "fs";
 
 import { NetAxis } from "../src/netaxis.js";
 import { List } from "../src/helpers.js";
-import { DnsOverride } from "../src/dns-override.js";
-import { SslPinning } from "../src/ssl-pinning.js";
+import { DnsOverride } from "../src/plugins/dns-override.js";
+import { SslPinning } from "../src/plugins/ssl-pinning.js";
 
 const dummyNetx = new NetAxis({
     listProvider: () => new List({}),

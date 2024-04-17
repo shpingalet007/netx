@@ -3,7 +3,7 @@ import dns from "dns";
 
 import { NetAxis } from "../src/netaxis.js";
 import { List } from "../src/helpers.js";
-import { DnsOverride } from "../src/dns-override.js";
+import { DnsOverride } from "../src/plugins/dns-override.js";
 
 const dummyNetx = new NetAxis({
     listProvider: () => new List({}),
