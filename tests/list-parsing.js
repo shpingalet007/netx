@@ -1,5 +1,6 @@
 import chai from "chai";
-import { List } from "../main.js";
+
+import { List } from "../src/helpers.js";
 
 function testAddresses(configV4, configV6, correctPin) {
     function checkPinning() {

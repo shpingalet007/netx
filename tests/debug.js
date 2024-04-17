@@ -1,7 +1,9 @@
-import { NetAxis, List } from "../main.js";
 import chai from "chai";
 import dns from "dns";
-import {DnsOverride} from "../dns-override.js";
+
+import { NetAxis } from "../src/netaxis.js";
+import { List } from "../src/helpers.js";
+import { DnsOverride } from "../src/dns-override.js";
 
 const dummyNetx = new NetAxis({
     listProvider: () => new List({}),

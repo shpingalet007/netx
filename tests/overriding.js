@@ -1,10 +1,12 @@
-import { NetAxis, List } from "../main.js";
 import chai from "chai";
 import dns from "dns";
 import tls from "tls";
 import fs from "fs";
-import { DnsOverride } from "../dns-override.js";
-import {SslPinning} from "../ssl-pinning.js";
+
+import { NetAxis } from "../src/netaxis.js";
+import { List } from "../src/helpers.js";
+import { DnsOverride } from "../src/dns-override.js";
+import { SslPinning } from "../src/ssl-pinning.js";
 
 const dummyNetx = new NetAxis({
     listProvider: () => new List({}),

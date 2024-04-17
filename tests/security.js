@@ -1,5 +1,7 @@
-import { NetAxis, List } from "../main.js";
 import chai from "chai";
+
+import { NetAxis } from "../src/netaxis.js";
+import { List } from "../src/helpers.js";
 
 const netx = new NetAxis({
     debug: true,

@@ -1,6 +1,6 @@
-import { OverridePlugin, PluginList } from "./plugin.js";
-
 import tls from "tls";
+
+import { OverridePlugin, PluginList } from "./helpers.js";
 
 class SslPinningList extends PluginList {
     static listParams = ["pin"];

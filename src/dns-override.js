@@ -1,6 +1,6 @@
-import { OverridePlugin, PluginList } from "./plugin.js";
-
 import dns from "dns";
+
+import { OverridePlugin, PluginList } from "./helpers.js";
 
 class DnsOverrideListV2 extends PluginList {
     static listParams = ["ip"];
