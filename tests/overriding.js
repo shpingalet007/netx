@@ -1,15 +1,13 @@
 import chai from "chai";
 import dns from "dns";
 import tls from "tls";
-import fs from "fs";
 
 import { NetAxis } from "../src/netaxis.js";
-import { List } from "../src/helpers.js";
 import { DnsOverride } from "../src/plugins/dns-override.js";
 import { SslPinning } from "../src/plugins/ssl-pinning.js";
 
 const dummyNetx = new NetAxis({
-    listProvider: () => new List({}),
+    list: {},
     readonly: true,
     debug: true,
 });
@@ -17,14 +15,18 @@ const dummyNetx = new NetAxis({
 const dummyAddresses = [ "140.82.114.4", "140.82.112.3", "140.82.113.4" ];
 
 const netx = new NetAxis({
-    listProvider: () => new List({
-        "notexistdomain.com": { ip: dummyAddresses, pin: [] },
-        "example.com": { ip: dummyAddresses, pin: ["INVALID_PINNING"] },
-    }),
+    list: {
+        "notexistdomain.com": {
+            ip: dummyAddresses,
+            pin: []
+        },
+        "example.com": {
+            ip: dummyAddresses,
+            pin: ["INVALID_PINNING"]
+        },
+    },
     readonly: true,
     debug: true,
-    //listPath: 'tests',
-    //checkPinningOnly: true,
 });
 
 await dummyNetx.use(new DnsOverride());
@@ -86,7 +88,7 @@ describe("Override functions", () => {
                 netxList[host] = nativeResult.address;
 
                 const wrapnetx = new NetAxis({
-                    listProvider: () => new List(netxList),
+                    list: netxList,
                     debug: true,
                     readonly: true,
                 });
@@ -112,7 +114,7 @@ describe("Override functions", () => {
                 netxList[host] = nativeResult.address;
 
                 const wrapnetx = new NetAxis({
-                    listProvider: () => new List(netxList),
+                    list: netxList,
                     debug: true,
                     readonly: true,
                 });
@@ -145,7 +147,7 @@ describe("Override functions", () => {
                 });
 
                 const wrapnetx = new NetAxis({
-                    listProvider: () => new List(netxList),
+                    list: netxList,
                     debug: true,
                     readonly: true,
                 });
@@ -186,7 +188,7 @@ describe("Override functions", () => {
                 netxList[host] = { ip: { v6: nativeResult.address } };
 
                 const wrapnetx = new NetAxis({
-                    listProvider: () => new List(netxList),
+                    list: netxList,
                     debug: true,
                     readonly: true,
                 });
@@ -212,7 +214,7 @@ describe("Override functions", () => {
                 netxList[host] = { ip: { v6: nativeResult.address } };
 
                 const wrapnetx = new NetAxis({
-                    listProvider: () => new List(netxList),
+                    list: netxList,
                     debug: true,
                     readonly: true,
                 });
@@ -245,7 +247,7 @@ describe("Override functions", () => {
                 });
 
                 const netx = new NetAxis({
-                    listProvider: () => new List(netxList),
+                    list: netxList,
                     debug: true,
                     readonly: true,
                 });
@@ -261,11 +263,8 @@ describe("Override functions", () => {
         describe("Request IPv4 and IPv6", () => {
             it("Error for not existing host", async () => {
                 const netx = new NetAxis({
-                    listProvider: () => {
-                        const config = fs.readFileSync("./tests/axisrc.json");
-                        return new List(config);
-                    }
-                }, true, true);
+                    list: "./tests/axisrc.json",
+                });
 
                 await netx.use(new DnsOverride());
 
@@ -288,7 +287,7 @@ describe("Override functions", () => {
                 netxList[host].ip[`v${nativeResult.address}`] = nativeResult.address;
 
                 const netx = new NetAxis({
-                    listProvider: () => new List(netxList),
+                    list: netxList,
                     debug: true,
                     readonly: true,
                 });
@@ -311,7 +310,7 @@ describe("Override functions", () => {
                 netxList[host].ip[`v${nativeResult.address}`] = nativeResult.address;
 
                 const netx = new NetAxis({
-                    listProvider: () => new List(netxList),
+                    list: netxList,
                     debug: true,
                     readonly: true,
                 });
@@ -343,7 +342,7 @@ describe("Override functions", () => {
                 });
 
                 const netx = new NetAxis({
-                    listProvider: () => new List(netxList),
+                    list: netxList,
                     debug: true,
                     readonly: true,
                 });

@@ -2,20 +2,23 @@ import chai from "chai";
 import dns from "dns";
 
 import { NetAxis } from "../src/netaxis.js";
-import { List } from "../src/helpers.js";
 import { DnsOverride } from "../src/plugins/dns-override.js";
 
 const dummyNetx = new NetAxis({
-    listProvider: () => new List({}),
+    list: {},
     readonly: true,
     debug: true,
 });
 
 const netx = new NetAxis({
-    listProvider: () => new List({
-        "notexistdomain.com": { ip: [ "140.82.114.4", "140.82.112.3", "140.82.113.4" ] },
-        "example.com": { ip: [ "140.82.114.4", "140.82.112.3", "140.82.113.4" ] },
-    }),
+    list: {
+        "notexistdomain.com": {
+            ip: [ "140.82.114.4", "140.82.112.3", "140.82.113.4" ]
+        },
+        "example.com": {
+            ip: [ "140.82.114.4", "140.82.112.3", "140.82.113.4" ]
+        },
+    },
     readonly: true,
     debug: true,
 });

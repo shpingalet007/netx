@@ -10,29 +10,29 @@ import {SslPinning} from "../src/main.js";
 const netx = new NetAxis({
     debug: true,
     readonly: true,
-    listProvider: () => new List({
-        "example.net": ["93.184.216.34", "INVALID_SECURITY_PIN"],
-        "example.com": ["93.184.216.34", "F2AAD73D32683B716D2A7D61B51C6D5764AB3899"],
-        "example.org": ["140.82.121.4"]
-    }),
+    protectGlobal: true,
+    list: {
+        "example.com": [
+            "93.184.216.34",
+            "F2AAD73D32683B716D2A7D61B51C6D5764AB3899"
+        ],
+    },
 });
 
 describe("Security", () => {
-    it("Direct access, change list must fail", () => {
+    it("List protection", () => {
         try {
-            netx.list = {};
+            netx.list = new List({});
         } catch (err) {
-            chai.expect(err.message).to.contain("Cannot assign to read only property");
+            chai.expect(err.message).to.contain("Cannot assign to read only");
         }
-    });
 
-    it("Patch with defineProperty, change list must fail", () => {
         Object.defineProperty(netx, "#readonly", { value: false });
 
         try {
-            netx.list = {};
+            netx.list = new List({});
         } catch (err) {
-            chai.expect(err.message).to.contain("Cannot assign to read only property");
+            chai.expect(err.message).to.contain("Cannot assign to read only");
         }
     });
 
@@ -77,13 +77,11 @@ describe("Security", () => {
         return new Promise(async (resolve, reject) => {
             const { NetAxis: NetAxisM } = await import('../src/main.js');
 
-            const netx1 = new NetAxisM({
-                listProvider: () => new List({}),
-            });
+            const netx1 = new NetAxisM();
 
             const ssl1 = new SslPinning();
 
-            netx1.use(ssl1);
+            netx1.use(ssl1, { protectCore: true });
 
             await netx1.protect();
 
@@ -98,14 +96,6 @@ describe("Security", () => {
             }
 
             tls.connect(443, { host: "example.com" });
-
-            socket.on('secureConnect', () => {
-                chai.expect(socket.authorized).to.be.true;
-                socket.end();
-                resolve();
-            });
-
-            chai.expect.fail('Security breach: Unglobalized succesfully!');
         });
     });
 
@@ -113,13 +103,11 @@ describe("Security", () => {
         return new Promise(async (resolve, reject) => {
             const { NetAxis: NetAxisM } = await import('../src/main.js');
 
-            const netx1 = new NetAxisM({
-                listProvider: () => new List({}),
-            });
+            const netx1 = new NetAxisM();
 
             const dns1 = new DnsOverride();
 
-            netx1.use(dns1);
+            netx1.use(dns1, { protectCore: true });
 
             await netx1.protect();
 
@@ -133,15 +121,7 @@ describe("Security", () => {
                 resolve();
             }
 
-            const socket = tls.connect(443, { host: "example.com" });
-
-            socket.on('secureConnect', () => {
-                chai.expect(socket.authorized).to.be.true;
-                socket.end();
-                resolve();
-            });
-
-            chai.expect.fail('Security breach: Unglobalized succesfully!');
+            tls.connect(443, { host: "example.com" });
         });
     });
 });

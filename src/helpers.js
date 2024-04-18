@@ -215,17 +215,19 @@ export class OverridePlugin {
 	async instantiate(axisInstance, options) {
 		let targetObj = this.SelfStatic.target;
 
-		const opts = { ...OverridePlugin.DefaultInstantiateOptions, ...options };
+		this.axisInstance = axisInstance;
 
-		if (!opts.override) {
+		const fileOpts = this.parseConfig(this.axisInstance.config);
+
+		const opts = { ...OverridePlugin.DefaultInstantiateOptions, ...fileOpts, ...options };
+
+		if (!opts.override && !this.axisInstance.config.overrideAll) {
 			targetObj = OverridePlugin.wrapModule(targetObj);
 		}
 
-		this.isProtected = opts.protect;
+		this.isProtected = opts.protectCore;
 
 		const mountPoint = this.SelfStatic.mountPoint;
-
-		this.axisInstance = axisInstance;
 
 		const overrideKeys = Object.keys(this.overrides);
 
@@ -241,13 +243,11 @@ export class OverridePlugin {
 			axisInstance[mountPoint] = targetObj;
 		}
 
-		this.config = this.parseConfig(this.axisInstance.config);
 		this.list = this.parseList(this.axisInstance._list.list);
 	}
 
 	parseConfig(NetAxisConfig) {
-		// Todo parse only needed
-		return NetAxisConfig;
+		return NetAxisConfig.pluginConfigs?.[this.SelfStatic.configParam] || {};
 	}
 
 	parseList(NetAxisList) {

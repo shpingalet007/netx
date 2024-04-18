@@ -2,8 +2,16 @@
   "debug": true,
   "readonly": false,
   "protectGlobal": false,
+  "overrideAll": true,
   "pluginConfigs": {
-    "dnsOverride": {}
+    "dnsOverride": {
+      "protectCore": false,
+      "override": false
+    },
+    "sslPinning": {
+      "protectCore": false,
+      "override": false
+    }
   },
   "list": {
     "example.net": {

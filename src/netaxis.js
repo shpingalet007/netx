@@ -28,10 +28,13 @@ export class NetAxis {
 	constructor(configs) {
 		this.id = (Math.random() + 1).toString(36).substring(7);
 
-		const configurations = { ...NetAxis.defaultConfigurations, ...configs };
-		const { debug, readonly, protectGlobal, listPath, listProvider } = configurations;
+		const configPath = configs?.listPath || NetAxis.defaultConfigurations.listPath;
+		const fileConfig = NetAxis.fsConfigProvider(configPath);
 
-		this.config = { debug, readonly, protectGlobal, listProvider };
+		const configurations = { ...NetAxis.defaultConfigurations, ...fileConfig, ...configs };
+		const { debug, readonly, protectGlobal, listPath, pluginConfigs, list, overrideAll } = configurations;
+
+		this.config = { debug, readonly, protectGlobal, list, pluginConfigs, overrideAll };
 
 		this.config.listPath = (listPath.endsWith('.json'))
 			? listPath
@@ -40,13 +43,7 @@ export class NetAxis {
 		this.#readonly = readonly;
 		this.#protectGlobal = protectGlobal;
 
-		if (!listProvider) {
-			const config = NetAxis.fsConfigProvider(this.config.listPath);
-			const list = config.list;
-			this._list = new List(list);
-		} else {
-			this._list = listProvider();
-		}
+		this._list = new List(list);
 
 		betterLogging(this.logger);
 
@@ -56,29 +53,24 @@ export class NetAxis {
 
 		const self = this;
 
-		Object.defineProperties(this, {
-			list: {
-				writable: false,
-				configurable: false,
-				value: {
-					set(value) {
-						if (self.#readonly && self._list) {
-							this.logger.warn("List was marked as readonly");
-						}
-
-						self._list = value;
-					},
-					get() {
-						return self._list;
-					}
+		Object.defineProperty(this, "list", {
+			set(value) {
+				if (self.#readonly && self._list) {
+					self.logger.warn("List was marked as readonly");
+					throw TypeError("Cannot assign to read only NetAxis List object");
 				}
-			}
+
+				self._list = value;
+			},
+			get() {
+				return self._list;
+			},
+			configurable: false,
 		})
 	}
 
 	async use(plugin, options) {
 		await plugin.instantiate(this, options);
-		plugin.parseConfig();
 		this.plugins[plugin.constructor.name] = plugin;
 	}
 
@@ -87,25 +79,33 @@ export class NetAxis {
 		debug: false,
 		readonly: true,
 		protectGlobal: true,
+		overrideAll: false,
 	};
 
 	static fsConfigProvider(listPath) {
 		const fullListPath = path.join(process.cwd(), listPath);
-		const list = fs.readFileSync(fullListPath, { encoding: "utf-8" });
 
-		return JSON.parse(list);
+		let configRaw;
+
+		try {
+			configRaw = fs.readFileSync(fullListPath, { encoding: "utf-8" });
+		} catch (err) {
+			return {};
+		}
+
+		return JSON.parse(configRaw);
 	}
 
 	globalize(globalName = NetAxis.GlobalName) {
 		const globalParams = {};
 		globalParams._netxGlobalPoint = {
 			value: globalName,
-			writable: false,
+			writable: !this.#protectGlobal,
 			configurable: !this.#protectGlobal,
 		};
 		globalParams[globalName] = {
 			value: this,
-			writable: false,
+			writable: !this.#protectGlobal,
 			configurable: !this.#protectGlobal,
 		};
 
