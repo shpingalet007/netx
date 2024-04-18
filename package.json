@@ -13,6 +13,7 @@
   "devDependencies": {
     "chai": "^4.3.7",
     "mocha": "^10.2.0",
-    "socks-proxy-agent": "^8.0.1"
+    "socks-proxy-agent": "^8.0.1",
+    "webpack": "^5.91.0"
   }
 }
