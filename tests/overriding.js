@@ -362,7 +362,7 @@ describe("Override functions", () => {
             const socket = tls.connect(443, {
                 host: "example.com",
                 checkServerIdentity: (...args) => (
-                    netx.pins.checkServerIdentity(...args)
+                    netx.pins.checkServerIdentity(...args, { checkPinningOnly: true })
                 ),
             });
 

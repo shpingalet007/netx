@@ -131,6 +131,20 @@ export class NetAxis {
 		}
 	}
 
+	async protect() {
+		const module = await import('./netaxis.js');
+
+		for (let pluginName in this.plugins) {
+			const plugin = this.plugins[pluginName];
+
+			if (plugin.isProtected) {
+				this.plugins[pluginName].constructor.protect?.();
+			}
+		}
+
+		Object.defineProperty(module, 'NetAxis', Object.freeze(NetAxis));
+	}
+
 	createAgent(protocol, args) {
 		return new WrappingAgent(this, () => new http.Agent(args));
 	}

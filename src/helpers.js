@@ -212,13 +212,16 @@ export class OverridePlugin {
 	config = {};
 	list = {};
 
-	async instantiate(axisInstance, options = {}) {
-		let _targetObj = this.SelfStatic.target;
-		let targetObj = {..._targetObj};
+	async instantiate(axisInstance, options) {
+		let targetObj = this.SelfStatic.target;
 
-		if (!options.override) {
+		const opts = { ...OverridePlugin.DefaultInstantiateOptions, ...options };
+
+		if (!opts.override) {
 			targetObj = OverridePlugin.wrapModule(targetObj);
 		}
+
+		this.isProtected = opts.protect;
 
 		const mountPoint = this.SelfStatic.mountPoint;
 
@@ -229,7 +232,7 @@ export class OverridePlugin {
 		for (let i = 0; i < overrideKeys.length; i++) {
 			const overrideKey = overrideKeys[i];
 
-			this.sources[overrideKey] = _targetObj[overrideKey];
+			this.sources[overrideKey] = targetObj[overrideKey];
 
 			targetObj[overrideKey] = this.overrides[overrideKey];
 		}
@@ -252,7 +255,7 @@ export class OverridePlugin {
 	}
 
 	static wrapModule(target) {
-		return new Proxy(target, {
+		return new Proxy({...target}, {
 			apply: function (target, thisArg, args) {
 				return target(...args);
 			},
@@ -277,6 +280,11 @@ export class OverridePlugin {
 			},
 		});
 	}
+
+	static DefaultInstantiateOptions = {
+		override: false,
+		protect: true,
+	};
 }
 
 class WrappingAgentBase {

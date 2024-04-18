@@ -2,6 +2,10 @@ import chai from "chai";
 
 import { NetAxis } from "../src/netaxis.js";
 import { List } from "../src/helpers.js";
+import tls from "tls";
+import dns from "dns";
+import {DnsOverride} from "../src/plugins/dns-override.js";
+import {SslPinning} from "../src/main.js";
 
 const netx = new NetAxis({
     debug: true,
@@ -55,6 +59,89 @@ describe("Security", () => {
 
         chai.expect.fail('Security breach: Unglobalized succesfully!');
     });
-});
 
-// Object.defineProperty(window, 'netx', { value: 1000, writable: false })
+    it("Properties modifications must fail", async () => {
+        try {
+            await netx.protect();
+
+            NetAxis.defaultConfigurations = null;
+        } catch (err) {
+            chai.expect(err.message).to.contain("Cannot assign to read only property");
+            return;
+        }
+
+        chai.expect.fail('Security breach: Properties changed successfully!');
+    });
+
+    it("TLS module protection", () => {
+        return new Promise(async (resolve, reject) => {
+            const { NetAxis: NetAxisM } = await import('../src/main.js');
+
+            const netx1 = new NetAxisM({
+                listProvider: () => new List({}),
+            });
+
+            const ssl1 = new SslPinning();
+
+            netx1.use(ssl1);
+
+            await netx1.protect();
+
+            try {
+                tls.checkServerIdentity = () => {
+                    console.log('I am an malicious code for TLS...');
+                    reject(Error('Malicious code injected'));
+                };
+            } catch(err) {
+                chai.expect(err.message).to.contain("Cannot assign to read only property");
+                resolve();
+            }
+
+            tls.connect(443, { host: "example.com" });
+
+            socket.on('secureConnect', () => {
+                chai.expect(socket.authorized).to.be.true;
+                socket.end();
+                resolve();
+            });
+
+            chai.expect.fail('Security breach: Unglobalized succesfully!');
+        });
+    });
+
+    it("DNS module protection", () => {
+        return new Promise(async (resolve, reject) => {
+            const { NetAxis: NetAxisM } = await import('../src/main.js');
+
+            const netx1 = new NetAxisM({
+                listProvider: () => new List({}),
+            });
+
+            const dns1 = new DnsOverride();
+
+            netx1.use(dns1);
+
+            await netx1.protect();
+
+            try {
+                dns.lookup = () => {
+                    console.log('I am an malicious code for DNS...');
+                    reject(Error('Malicious code injected'));
+                };
+            } catch(err) {
+                chai.expect(err.message).to.contain("Cannot assign to read only property");
+                resolve();
+            }
+
+            const socket = tls.connect(443, { host: "example.com" });
+
+            socket.on('secureConnect', () => {
+                chai.expect(socket.authorized).to.be.true;
+                socket.end();
+                resolve();
+            });
+
+            chai.expect.fail('Security breach: Unglobalized succesfully!');
+        });
+    });
+});

@@ -68,5 +68,9 @@ export class DnsOverride extends OverridePlugin {
         this.sources.lookup(hostname, options, callback);
     };
 
+    static protect() {
+        DnsOverride.target = Object.freeze(DnsOverride.target);
+    }
+
     static defaultLookupOptions = { family: 0, all: false, verbatim: true };
 }
