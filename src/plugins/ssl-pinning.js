@@ -2,11 +2,34 @@ import tls from "tls";
 
 import { OverridePlugin, PluginList } from "../helpers.js";
 
-class SslPinningList extends PluginList {
+export class SslPinningList extends PluginList {
     static listParams = ["pin"];
 
     getPinning(host) {
         return this.list?.[host]?.pin || [];
+    }
+
+    static parseList(rawList) {
+        const list = {};
+
+        const hosts = Object.keys(rawList);
+
+        hosts.forEach((host) => {
+            const hostData = rawList[host];
+
+            const isPinStringForm = (typeof hostData.pin === "string");
+            const isPinArrayForm = Array.isArray(hostData.pin);
+
+            list[host] = {};
+
+            if (isPinStringForm) {
+                list[host].pin = [hostData.pin];
+            } else if (isPinArrayForm) {
+                list[host].pin = hostData.pin;
+            }
+        });
+
+        return list;
     }
 }
 

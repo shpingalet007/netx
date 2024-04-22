@@ -102,58 +102,6 @@ export class List {
 		return list;
 	}
 
-	getPinning(host) {
-		return this.list?.[host]?.pin || [];
-	}
-
-	getAddress(host, family = 4) {
-		const isHostListed = (host in this.list);
-		const isHostAddressEmpty = (!this.list?.[host]?.ip?.v4?.length && !this.list?.[host]?.ip?.v6?.length);
-
-		if (!isHostListed || isHostAddressEmpty) return;
-
-		const addr4 = this.list[host].ip?.v4?.[0];
-		const addr6 = this.list[host].ip?.v6?.[0];
-
-		if (!addr6 && !addr4) return;
-
-		if ((family === 0 || family === 4) && addr4) return { ip: addr4, family: 4 };
-		if ((family === 0 || family === 6) && addr6) return { ip: addr6, family: 6 };
-		if (family === 6 && addr4) return { ip: `::ffff:${addr4}`, family: 6 };
-	}
-
-	getAllAddresses(host) {
-		const ipV4 = this.list?.[host]?.ip?.v4;
-		const ipV6 = this.list?.[host]?.ip?.v6;
-
-		let ipV4List = [];
-		let ipV6List = [];
-
-		if (ipV4?.length) {
-			ipV4.forEach((ip) => (
-				ipV4List.push({ ip, family: 4 })
-			));
-		}
-
-		if (ipV6?.length) {
-			ipV6.forEach((ip) => (
-				ipV6List.push({ ip, family: 6 })
-			));
-		}
-
-		if (ipV4?.length && ipV6?.length) {
-			return [...ipV4List, ...ipV6List];
-		}
-
-		if (ipV4?.length) {
-			return ipV4List;
-		}
-
-		if (ipV6?.length) {
-			return ipV6List;
-		}
-	}
-
 	put(host, data) {}
 	update(host, data) {}
 	delete(host, data) {}
@@ -179,20 +127,20 @@ export class PluginList {
 	}
 
 	parseList(list) {
-		const cloneList = {...list};
+		const preparedList = this.SelfStatic.parseList?.({...list}) || list;
 
-		Object.keys(cloneList).forEach((host) => {
-			const hostParams = cloneList[host]
+		Object.keys(preparedList).forEach((host) => {
+			const hostParams = preparedList[host]
 			const pluginHostParams = {};
 
 			this.SelfStatic.listParams.forEach((paramName) => {
 				pluginHostParams[paramName] = hostParams[paramName]
 			});
 
-			cloneList[host] = pluginHostParams;
+			preparedList[host] = pluginHostParams;
 		});
 
-		return cloneList;
+		return preparedList;
 	}
 }
 

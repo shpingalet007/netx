@@ -1,8 +1,13 @@
 # IDE files
-.idea
+/.idea
 
 # Folders
-node_modules
+/node_modules
+/coverage
+/dist
 
 # macOS specific files
 .DS_Store
+
+# NPM packs
+*.tgz

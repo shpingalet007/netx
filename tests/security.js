@@ -89,13 +89,14 @@ describe("Security", () => {
                 tls.checkServerIdentity = () => {
                     console.log('I am an malicious code for TLS...');
                     reject(Error('Malicious code injected'));
+                    socket.end();
                 };
+
+                const socket = tls.connect(443, { host: "example.com" });
             } catch(err) {
                 chai.expect(err.message).to.contain("Cannot assign to read only property");
                 resolve();
             }
-
-            tls.connect(443, { host: "example.com" });
         });
     });
 
@@ -115,13 +116,14 @@ describe("Security", () => {
                 dns.lookup = () => {
                     console.log('I am an malicious code for DNS...');
                     reject(Error('Malicious code injected'));
+                    socket.end();
                 };
+
+                const socket = tls.connect(443, { host: "example.com" });
             } catch(err) {
                 chai.expect(err.message).to.contain("Cannot assign to read only property");
                 resolve();
             }
-
-            tls.connect(443, { host: "example.com" });
         });
     });
 });

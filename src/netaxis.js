@@ -51,6 +51,10 @@ export class NetAxis {
 			this.logger.logLevel = 4;
 		}
 
+		if (!process.argv.includes('--netaxis-no-logs')) {
+			this.logger.logLevel = -1;
+		}
+
 		const self = this;
 
 		Object.defineProperty(this, "list", {
@@ -76,6 +80,7 @@ export class NetAxis {
 
 	static defaultConfigurations = {
 		listPath: 'axisrc.json',
+		list: {},
 		debug: false,
 		readonly: true,
 		protectGlobal: true,
