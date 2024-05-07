@@ -11,9 +11,6 @@ import { NetAxis } from "../src/netaxis.js";
 import { DnsOverride } from "../src/plugins/dns-override.js";
 import { SslPinning } from "../src/main.js";
 import { WrappingAgent } from "../src/helpers.js";
-import {Agent as BaseAgent, req} from 'agent-base';
-import { HttpProxyAgent } from "http-proxy-agent";
-import { HttpsProxyAgent } from "https-proxy-agent";
 import http from "http";
 import * as net from "net";
 
@@ -138,133 +135,6 @@ describe("Agents support", () => {
 
             chai.expect(body).to.include('GitHub');
         });
-
-        it("Check Custom Agent", async () => {
-            /*class HttpProxyAgent extends BaseAgent {
-                constructor(url, opts) {
-                    super(opts);
-
-                    const proxyUrl = new URL(url);
-
-                    if (proxyUrl.protocol !== 'http:') {
-                        throw Error('Unsupported protocol HTTP');
-                    }
-
-                    this.proxy = {
-                        host: proxyUrl.hostname,
-                        port: Number.parseFloat(proxyUrl.port)
-                    };
-
-                    this.proxySocket = this.initSocket();
-                }
-
-                async connect(req, opts) {
-                    return this.proxySocket;
-                }
-
-                initSocket() {
-                    return net.connect({
-                        hostname: this.proxy.host,
-                        port: this.proxy.port,
-                    });
-                }
-
-                async addRequest(request, options) {
-                    // Here you can access and manipulate raw packet data
-                    //console.log('Raw packet data:', request);
-
-                    // Call the original `addRequest` method to continue with the request
-                    return super.addRequest(request, options);
-                }
-
-                createSocket(req, options, cb) {
-                    let targetHost = req.host;
-
-                    if (options.lookup) {
-                        options.lookup(req.host, (err, address) => {
-                            this.patchFullRequestPath(req, /!*'93.184.215.14' ||*!/ address);
-                            super.createSocket(req, options, cb);
-                        });
-
-                        return;
-                    }
-
-                    this.patchFullRequestPath(req, targetHost);
-                    super.createSocket(req, options, cb);
-                }
-
-                patchFullRequestPath(request, target) {
-                    request.path = `${request.protocol}//${target}${request.path}`;
-
-                    request._implicitHeader();
-                }
-            }*/
-
-            process.env["NODE_TLS_REJECT_UNAUTHORIZED"] = 0;
-
-            const httpProxyAgent = o => new HttpProxyAgent('http://127.0.0.1:8888', o);
-            const httpAgent = new WrappingAgent('http', netx, httpProxyAgent);
-
-            let body;
-
-            try {
-                const res = await fetch('http://example.com/', {
-                    agent: httpAgent,
-                    /*lookup: (...a) => {
-                        console.log(a);
-                    }*/
-                });
-
-                body = await res.text();
-            } catch (err) {
-                if (err.message.includes('ECONNREFUSED')) {
-                    chai.expect.fail('Is HTTP proxy running?');
-                    return;
-                }
-
-                console.error(err);
-
-                chai.expect.fail('Failed to fetch. Is Agent okay?');
-                return;
-            }
-
-            chai.expect(body).to.include('GitHub');
-        });
-
-        /*it("Check HTTP Proxy Agent", async () => {
-            const httpProxyAgent = o => new HttpProxyAgent('http://127.0.0.1:8888', o);
-            const httpAgent = new WrappingAgent('http', netx, httpProxyAgent);
-            const httpAgent = new http.Agent({
-                lookup: (...a) => {
-                    console.log(a);
-                },
-            });
-
-            let body;
-
-            try {
-                const res = await fetch('http://example.net/', {
-                    //agent: httpAgent,
-                    lookup: (...a) => {
-                        console.log(a);
-                    }
-                });
-
-                body = await res.text();
-            } catch (err) {
-                if (err.message.includes('ECONNREFUSED')) {
-                    chai.expect.fail('Is HTTP proxy running?');
-                    return;
-                }
-
-                console.error(err);
-
-                chai.expect.fail('Failed to fetch. Is Agent okay?');
-                return;
-            }
-
-            chai.expect(body).to.include('GitHub');
-        });*/
     });
 
     describe("SSL Pinning Plugin", async () => {
@@ -307,7 +177,7 @@ describe("Agents support", () => {
         });
 
         it("Check SOCKS Proxy Agent", async () => {
-            const socksAgent = o => new SocksProxyAgent('socks://127.0.0.1:8889', o)
+            const socksAgent = o => new SocksProxyAgent('socks://127.0.0.1:8889', o);
             const httpsAgent = new WrappingAgent('https', netx, socksAgent);
 
             let body;
@@ -330,49 +200,6 @@ describe("Agents support", () => {
 
             chai.expect(body).to.include('GitHub');
         });
-
-        /*it("Check HTTPS Proxy Agent", async () => {
-            const httpsAgentOptions = {
-                keepAlive: true,
-                timeout: 55000,
-                maxSockets: 20,
-                maxFreeSockets: 5,
-                maxCachedSessions: 500,
-            };
-
-            const proxyRequestOptions = {
-                protocol: "http:",
-                host: "127.0.0.1",
-                port: 8888,
-                timeout: 123000,
-                maxSockets: 100,
-            };
-
-            const httpsProxyAgent = o => new HttpsProxyAgent(httpsAgentOptions, proxyRequestOptions);
-            const httpsAgent = new WrappingAgent('https', netx, httpsProxyAgent);
-
-            let body;
-
-            try {
-                const res = await fetch('https://example.net/', {
-                    agent: httpsAgent,
-                });
-
-                body = await res.text();
-            } catch (err) {
-                if (err.message.includes('ECONNREFUSED')) {
-                    chai.expect.fail('Is SOCKS proxy running?');
-                    return;
-                }
-
-                console.error(err);
-
-                chai.expect.fail('Failed to fetch. Is Agent okay?');
-                return;
-            }
-
-            chai.expect(body).to.include('GitHub');
-        });*/
     });
 });
 
