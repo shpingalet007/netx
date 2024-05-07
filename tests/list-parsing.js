@@ -234,202 +234,202 @@ describe("Complex configs", () => {
 });*/
 
 describe("Lists parsing", () => {
-    describe("DNS Override List", () => {
-        it("Get IP associations", () => {
-            const dnsList = new ListDns({
-                "site1.com": {
-                    "ip": [ "10.20.30.40", "20.30.40.50", "::ffff:20.30.40.50" ],
-                },
-            });
+  describe("DNS Override List", () => {
+    it("Get IP associations", () => {
+      const dnsList = new ListDns({
+        "site1.com": {
+          ip: ["10.20.30.40", "20.30.40.50", "::ffff:20.30.40.50"],
+        },
+      });
 
-            const expected1 = [
-                {
-                    "ip": "10.20.30.40",
-                    "family": 4,
-                },
-                {
-                    "ip": "20.30.40.50",
-                    "family": 4,
-                },
-                {
-                    "ip": "::ffff:20.30.40.50",
-                    "family": 6,
-                },
-            ];
+      const expected1 = [
+        {
+          ip: "10.20.30.40",
+          family: 4,
+        },
+        {
+          ip: "20.30.40.50",
+          family: 4,
+        },
+        {
+          ip: "::ffff:20.30.40.50",
+          family: 6,
+        },
+      ];
 
-            const expected2 = {
-                "ip": "10.20.30.40",
-                "family": 4,
-            };
+      const expected2 = {
+        ip: "10.20.30.40",
+        family: 4,
+      };
 
-            const result1 = dnsList.getAllAddresses("site1.com");
-            const result2 = dnsList.getAddress("site1.com");
+      const result1 = dnsList.getAllAddresses("site1.com");
+      const result2 = dnsList.getAddress("site1.com");
 
-            chai.expect(result1).to.be.deep.equal(expected1);
-            chai.expect(result2).to.be.deep.equal(expected2);
-        });
-        it("IPv4 format, single record", () => {
-            const dnsList1 = ListDns.parseList({
-                "site1.com": {
-                    "ip": "10.20.30.40",
-                },
-            });
-
-            const dnsList2 = ListDns.parseList({
-                "site1.com": {
-                    "ip": "10.20.30.40",
-                },
-                "site2.com": {
-                    "ip": "10.20.30.40",
-                },
-            });
-
-            const expected1 = {
-                "site1.com": {
-                    "ip": {
-                        "v4": [ "10.20.30.40" ],
-                    },
-                },
-            };
-
-            const expected2 = {
-                "site1.com": {
-                    "ip": {
-                        "v4": [ "10.20.30.40" ],
-                    },
-                },
-                "site2.com": {
-                    "ip": {
-                        "v4": [ "10.20.30.40" ],
-                    },
-                },
-            };
-
-            chai.expect(dnsList1).to.be.deep.equal(expected1);
-            chai.expect(dnsList2).to.be.deep.equal(expected2);
-        });
-        it("IPv4 format, multiple records", () => {
-            const dnsList1 = ListDns.parseList({
-                "site1.com": {
-                    "ip": [ "10.20.30.40", "20.30.40.50" ],
-                },
-            });
-
-            const dnsList2 = ListDns.parseList({
-                "site1.com": {
-                    "ip": [ "10.20.30.40", "20.30.40.50" ],
-                },
-                "site2.com": {
-                    "ip": [ "10.20.30.40", "20.30.40.50" ],
-                },
-            });
-
-            const expected1 = {
-                "site1.com": {
-                    "ip": {
-                        "v4": [ "10.20.30.40", "20.30.40.50" ],
-                    },
-                },
-            };
-
-            const expected2 = {
-                "site1.com": {
-                    "ip": {
-                        "v4": [ "10.20.30.40", "20.30.40.50" ],
-                    },
-                },
-                "site2.com": {
-                    "ip": {
-                        "v4": [ "10.20.30.40", "20.30.40.50" ],
-                    },
-                },
-            };
-
-            chai.expect(dnsList1).to.be.deep.equal(expected1);
-            chai.expect(dnsList2).to.be.deep.equal(expected2);
-        });
+      chai.expect(result1).to.be.deep.equal(expected1);
+      chai.expect(result2).to.be.deep.equal(expected2);
     });
-    describe("SSL Pinning List", () => {
-        it("Get Pin associations", () => {
-            const sslList = new ListSsl({
-                "site1.com": {
-                    "pin": [ "PIN_1" ],
-                },
-            });
+    it("IPv4 format, single record", () => {
+      const dnsList1 = ListDns.parseList({
+        "site1.com": {
+          ip: "10.20.30.40",
+        },
+      });
 
-            const expected1 = [ "PIN_1" ];
+      const dnsList2 = ListDns.parseList({
+        "site1.com": {
+          ip: "10.20.30.40",
+        },
+        "site2.com": {
+          ip: "10.20.30.40",
+        },
+      });
 
-            const result1 = sslList.getPinning("site1.com");
+      const expected1 = {
+        "site1.com": {
+          ip: {
+            v4: ["10.20.30.40"],
+          },
+        },
+      };
 
-            chai.expect(result1).to.be.deep.equal(expected1);
-        });
-        it("Single pin", () => {
-            const pinList1 = ListSsl.parseList({
-                "site1.com": {
-                    "pin": "PIN_1",
-                },
-            });
+      const expected2 = {
+        "site1.com": {
+          ip: {
+            v4: ["10.20.30.40"],
+          },
+        },
+        "site2.com": {
+          ip: {
+            v4: ["10.20.30.40"],
+          },
+        },
+      };
 
-            const pinList2 = ListSsl.parseList({
-                "site1.com": {
-                    "pin": "PIN_1",
-                },
-                "site2.com": {
-                    "pin": "PIN_2",
-                },
-            });
-
-            const expected1 = {
-                "site1.com": {
-                    "pin": ["PIN_1"],
-                },
-            };
-
-            const expected2 = {
-                "site1.com": {
-                    "pin": ["PIN_1"],
-                },
-                "site2.com": {
-                    "pin": ["PIN_2"],
-                }
-            };
-
-            chai.expect(pinList1).to.be.deep.equal(expected1);
-            chai.expect(pinList2).to.be.deep.equal(expected2);
-        });
-        it("Multiple pins", () => {
-            const pinList1 = ListSsl.parseList({
-                "site1.com": {
-                    "pin": [ "PIN_1.1", "PIN_1.2" ],
-                },
-            });
-
-            const pinList2 = ListSsl.parseList({
-                "site1.com": {
-                    "pin": [ "PIN_1.1", "PIN_1.2" ],
-                },
-                "site2.com": {
-                    "pin": [ "PIN_2.1", "PIN_2.2" ],
-                },
-            });
-
-            const expected1 = {
-                "site1.com": {
-                    "pin": [ "PIN_1.1", "PIN_1.2" ],
-                },
-            };
-
-            const expected2 = {
-                "site1.com": {
-                    "pin": [ "PIN_1.1", "PIN_1.2" ],
-                },
-                "site2.com": {
-                    "pin": [ "PIN_2.1", "PIN_2.2" ],
-                },
-            };
-
-            chai.expect(pinList1).to.be.deep.equal(expected1);
-            chai.expect(pinList2).to.be.deep.equal(expected2);
-        });
+      chai.expect(dnsList1).to.be.deep.equal(expected1);
+      chai.expect(dnsList2).to.be.deep.equal(expected2);
     });
+    it("IPv4 format, multiple records", () => {
+      const dnsList1 = ListDns.parseList({
+        "site1.com": {
+          ip: ["10.20.30.40", "20.30.40.50"],
+        },
+      });
+
+      const dnsList2 = ListDns.parseList({
+        "site1.com": {
+          ip: ["10.20.30.40", "20.30.40.50"],
+        },
+        "site2.com": {
+          ip: ["10.20.30.40", "20.30.40.50"],
+        },
+      });
+
+      const expected1 = {
+        "site1.com": {
+          ip: {
+            v4: ["10.20.30.40", "20.30.40.50"],
+          },
+        },
+      };
+
+      const expected2 = {
+        "site1.com": {
+          ip: {
+            v4: ["10.20.30.40", "20.30.40.50"],
+          },
+        },
+        "site2.com": {
+          ip: {
+            v4: ["10.20.30.40", "20.30.40.50"],
+          },
+        },
+      };
+
+      chai.expect(dnsList1).to.be.deep.equal(expected1);
+      chai.expect(dnsList2).to.be.deep.equal(expected2);
+    });
+  });
+  describe("SSL Pinning List", () => {
+    it("Get Pin associations", () => {
+      const sslList = new ListSsl({
+        "site1.com": {
+          pin: ["PIN_1"],
+        },
+      });
+
+      const expected1 = ["PIN_1"];
+
+      const result1 = sslList.getPinning("site1.com");
+
+      chai.expect(result1).to.be.deep.equal(expected1);
+    });
+    it("Single pin", () => {
+      const pinList1 = ListSsl.parseList({
+        "site1.com": {
+          pin: "PIN_1",
+        },
+      });
+
+      const pinList2 = ListSsl.parseList({
+        "site1.com": {
+          pin: "PIN_1",
+        },
+        "site2.com": {
+          pin: "PIN_2",
+        },
+      });
+
+      const expected1 = {
+        "site1.com": {
+          pin: ["PIN_1"],
+        },
+      };
+
+      const expected2 = {
+        "site1.com": {
+          pin: ["PIN_1"],
+        },
+        "site2.com": {
+          pin: ["PIN_2"],
+        },
+      };
+
+      chai.expect(pinList1).to.be.deep.equal(expected1);
+      chai.expect(pinList2).to.be.deep.equal(expected2);
+    });
+    it("Multiple pins", () => {
+      const pinList1 = ListSsl.parseList({
+        "site1.com": {
+          pin: ["PIN_1.1", "PIN_1.2"],
+        },
+      });
+
+      const pinList2 = ListSsl.parseList({
+        "site1.com": {
+          pin: ["PIN_1.1", "PIN_1.2"],
+        },
+        "site2.com": {
+          pin: ["PIN_2.1", "PIN_2.2"],
+        },
+      });
+
+      const expected1 = {
+        "site1.com": {
+          pin: ["PIN_1.1", "PIN_1.2"],
+        },
+      };
+
+      const expected2 = {
+        "site1.com": {
+          pin: ["PIN_1.1", "PIN_1.2"],
+        },
+        "site2.com": {
+          pin: ["PIN_2.1", "PIN_2.2"],
+        },
+      };
+
+      chai.expect(pinList1).to.be.deep.equal(expected1);
+      chai.expect(pinList2).to.be.deep.equal(expected2);
+    });
+  });
 });
