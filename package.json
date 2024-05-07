@@ -4,6 +4,14 @@
   "type": "module",
   "description": "",
   "main": "main.js",
+  "scripts": {
+    "lint": "eslint .",
+    "prettify": "prettier --write .",
+    "test": "mocha tests --allow-uncaught --netaxis-no-logs",
+    "coverage": "npm run coverage:check && npm run coverage:open",
+    "coverage:check": "c8 --reporter=lcov npm run test || true",
+    "coverage:open": "open-cli coverage/lcov-report/index.html"
+  },
   "author": "shpingalet007",
   "license": "GPL-3.0-or-later",
   "dependencies": {
@@ -11,8 +19,12 @@
     "node-fetch": "^3.3.1"
   },
   "devDependencies": {
+    "c8": "^9.1.0",
     "chai": "^4.3.7",
+    "eslint": "^9.2.0",
     "mocha": "^10.2.0",
+    "open-cli": "^8.0.0",
+    "prettier": "^3.2.5",
     "socks-proxy-agent": "^8.0.1",
     "webpack": "^5.91.0"
   }
