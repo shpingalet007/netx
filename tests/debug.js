@@ -58,7 +58,7 @@ describe("Debug tests", () => {
                 const host = "notexistdomain.com";
 
                 await dummyNetx.use(new DnsOverride());
-                await netx.use(new DnsOverride());
+                netx.use(new DnsOverride());
 
                 const nativeResult = await dnsLookup(host, 4);
                 const dummyNetxResult = await netxLookup(dummyNetx, host, 4);

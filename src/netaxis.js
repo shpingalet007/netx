@@ -1,10 +1,12 @@
 import path from "path";
 import fs from "fs";
+import https from "https";
 import http from "http";
 
 import betterLogging from "better-logging";
 
-import { List, WrappingAgent } from "./helpers.js";
+// TODO: Finish Socket Agent in future
+import { WrappingAgent } from "./helpers.js";
 
 export class NetAxis {
 	static GlobalName = "netx";
@@ -43,7 +45,7 @@ export class NetAxis {
 		this.#readonly = readonly;
 		this.#protectGlobal = protectGlobal;
 
-		this._list = new List(list);
+		this._list = list;
 
 		betterLogging(this.logger);
 
@@ -51,7 +53,7 @@ export class NetAxis {
 			this.logger.logLevel = 4;
 		}
 
-		if (!process.argv.includes('--netaxis-no-logs')) {
+		if (process.argv.includes('--netaxis-no-logs')) {
 			this.logger.logLevel = -1;
 		}
 
@@ -73,8 +75,8 @@ export class NetAxis {
 		})
 	}
 
-	async use(plugin, options) {
-		await plugin.instantiate(this, options);
+	use(plugin, options) {
+		plugin.instantiate(this, options);
 		this.plugins[plugin.constructor.name] = plugin;
 	}
 
@@ -143,6 +145,7 @@ export class NetAxis {
 			const plugin = this.plugins[pluginName];
 
 			if (plugin.isProtected) {
+				this.plugins[pluginName].SelfStatic.target.netaxis = true;
 				this.plugins[pluginName].constructor.protect?.();
 			}
 		}
@@ -150,7 +153,22 @@ export class NetAxis {
 		Object.defineProperty(module, 'NetAxis', Object.freeze(NetAxis));
 	}
 
+	// TODO: Finish Socket Agent in future
 	createAgent(protocol, args) {
-		return new WrappingAgent(this, () => new http.Agent(args));
+		return this.agentCreator(args)({ protocol });
+	}
+
+	agentCreator() {
+		return ({ protocol }) => {
+			if (protocol.includes('https')) {
+				return new WrappingAgent('https', this, opts => new https.Agent(opts));
+			}
+
+			if (protocol.includes('http')) {
+				return new WrappingAgent('http', this, opts => new http.Agent(opts));
+			}
+
+			throw Error(`Unsupported protocol ${protocol}`);
+		};
 	}
 }

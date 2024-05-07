@@ -45,8 +45,8 @@ export class SslPinning extends OverridePlugin {
         checkServerIdentity: (...args) => this.#checkServerIdentity(...args),
     };
 
-    #checkServerIdentity(hostname, cert, extraOptions = {}) {
-        if (!extraOptions.checkPinningOnly) {
+    #checkServerIdentity(hostname, cert) {
+        if (!this.config.checkPinningOnly) {
             this.axisInstance.logger.info(`General SSL security checks are enabled on host ${hostname}`);
 
             const err = this.sources.checkServerIdentity(hostname, cert);
@@ -81,11 +81,11 @@ export class SslPinning extends OverridePlugin {
             this.axisInstance.logger.warn(msg);
 
             const untrustedCert = new Error(msg);
-            untrustedCert.type = "netx";
+            untrustedCert.type = "netaxis";
             untrustedCert.reason = "Certificate pinning error";
             untrustedCert.host = hostname;
-            untrustedCert.errno = "UNTRUSTED_CERT_IN_CHAIN";
-            untrustedCert.code = "UNTRUSTED_CERT_IN_CHAIN";
+            untrustedCert.errno = "NETAXIS_UNTRUSTED_CERT_IN_CHAIN";
+            untrustedCert.code = "NETAXIS_UNTRUSTED_CERT_IN_CHAIN";
             untrustedCert.cert = cert;
 
             return untrustedCert;

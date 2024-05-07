@@ -130,7 +130,16 @@ export class DnsOverride extends OverridePlugin {
     static configParam = "dnsOverride";
 
     overrides = {
-        lookup: (...args) => this.#lookup(...args),
+        lookup: (...args) => this.#lookupOverload(...args),
+    };
+
+    #lookupOverload = (...args) => {
+        if (args.length === 2) {
+            this.#lookup(args[0], {}, args[1]);
+            return;
+        }
+
+        this.#lookup(...args)
     };
 
     #lookup = (hostname, options = DnsOverride.defaultLookupOptions, callback) => {

@@ -5,6 +5,7 @@
 /node_modules
 /coverage
 /dist
+/examples
 
 # macOS specific files
 .DS_Store

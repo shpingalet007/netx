@@ -1,112 +1,6 @@
 import https from "https";
 import http from "http";
 
-export class List {
-	list = {};
-
-	constructor(associations) {
-		this.list = List.parseList(associations);
-	}
-
-	static parseList(associations) {
-		const list = {};
-
-		const hosts = Object.keys(associations);
-
-		hosts.forEach((host) => {
-			const hostData = associations[host];
-
-			const isIpForm = (typeof hostData === "string");
-			const isIpAndPinForm = Array.isArray(hostData);
-			const isComplexForm = typeof hostData === "object";
-
-			const isIpV4 = ip => ip.includes(".");
-			const isIpV6 = ip => ip.includes(":");
-			const getIpVersion = (ip) => {
-				if (isIpV4(ip)) return 'v4';
-				if (isIpV6(ip)) return 'v6';
-			}
-
-			list[host] = { ip: {}, pin: [] };
-
-			if (isIpForm) {
-				const ipVersion = getIpVersion(hostData);
-
-				list[host].ip[ipVersion] = [hostData];
-			} else if (isIpAndPinForm) {
-				if (hostData[1]) {
-					list[host].pin.push(hostData[1]);
-				}
-
-				const ipVersion = getIpVersion(hostData[0]);
-
-				list[host].ip[ipVersion] = [hostData[0]];
-			} else if (isComplexForm) {
-				const isIpStringForm = (typeof hostData.ip === "string");
-				const isIpArrayForm = Array.isArray(hostData.ip);
-				const isIpObjectForm = (typeof hostData.ip === "object");
-
-				const isPinStringForm = (typeof hostData.pin === "string");
-				const isPinArrayForm = Array.isArray(hostData.pin);
-
-				if (isIpStringForm) {
-					const ipVersion = getIpVersion(hostData.ip);
-
-					list[host].ip[ipVersion] = [hostData.ip];
-				} else if (isIpArrayForm) {
-					hostData.ip.forEach((ip) => {
-						const ipVersion = getIpVersion(ip);
-						const isVersionInObject = (ipVersion in list[host].ip);
-
-						if (!isVersionInObject) {
-							list[host].ip[ipVersion] = [];
-						}
-
-						list[host].ip[ipVersion].push(ip);
-					});
-				} else if (isIpObjectForm) {
-					const isIpV4StringForm = (typeof hostData.ip?.v4 === "string");
-					const isIpV4ArrayForm = Array.isArray(hostData.ip?.v4);
-					const isIpV6StringForm = (typeof hostData.ip?.v6 === "string");
-					const isIpV6ArrayForm = Array.isArray(hostData.ip?.v6);
-
-					if (isIpV4StringForm && hostData.ip.v4.length) {
-						list[host].ip.v4 = [hostData.ip.v4];
-					} else if (isIpV4ArrayForm) {
-						list[host].ip.v4 = [];
-
-						hostData.ip.v4.forEach((ip) => {
-							list[host].ip.v4.push(ip);
-						});
-					}
-
-					if (isIpV6StringForm && hostData.ip.v6.length) {
-						list[host].ip.v6 = [hostData.ip.v6];
-					} else if (isIpV6ArrayForm) {
-						list[host].ip.v6 = [];
-
-						hostData.ip.v6.forEach((ip) => {
-							list[host].ip.v6.push(ip);
-						});
-					}
-				}
-
-				if (isPinStringForm) {
-					list[host].pin = [hostData.pin];
-				} else if (isPinArrayForm) {
-					list[host].pin = hostData.pin;
-				}
-			}
-		});
-
-		return list;
-	}
-
-	put(host, data) {}
-	update(host, data) {}
-	delete(host, data) {}
-}
-
 export class PluginList {
 	static listParams = [];
 
@@ -118,16 +12,17 @@ export class PluginList {
 		this.list = this.parseList(list);
 	}
 
-	getHostConfig(host, param) {
+	// TODO: Aggregated configurations?
+	/*getHostConfig(host, param) {
 		if (!param) {
 			return this.list[host];
 		}
 
 		return this.list[host][param];
-	}
+	}*/
 
 	parseList(list) {
-		const preparedList = this.SelfStatic.parseList?.({...list}) || list;
+		const preparedList = this.SelfStatic.parseList?.({...list});
 
 		Object.keys(preparedList).forEach((host) => {
 			const hostParams = preparedList[host]
@@ -160,20 +55,20 @@ export class OverridePlugin {
 	config = {};
 	list = {};
 
-	async instantiate(axisInstance, options) {
+	instantiate(axisInstance, options) {
 		let targetObj = this.SelfStatic.target;
 
 		this.axisInstance = axisInstance;
 
 		const fileOpts = this.parseConfig(this.axisInstance.config);
 
-		const opts = { ...OverridePlugin.DefaultInstantiateOptions, ...fileOpts, ...options };
+		this.config = { ...OverridePlugin.DefaultInstantiateOptions, ...fileOpts, ...options };
 
-		if (!opts.override && !this.axisInstance.config.overrideAll) {
+		if (!this.config.override && !this.axisInstance.config.overrideAll) {
 			targetObj = OverridePlugin.wrapModule(targetObj);
 		}
 
-		this.isProtected = opts.protectCore;
+		this.isProtected = this.config.protectCore;
 
 		const mountPoint = this.SelfStatic.mountPoint;
 
@@ -191,7 +86,7 @@ export class OverridePlugin {
 			axisInstance[mountPoint] = targetObj;
 		}
 
-		this.list = this.parseList(this.axisInstance._list.list);
+		this.list = this.parseList(this.axisInstance._list);
 	}
 
 	parseConfig(NetAxisConfig) {
@@ -235,8 +130,17 @@ export class OverridePlugin {
 	};
 }
 
+// TODO: Finish Socket Agent in future
 class WrappingAgentBase {
 	constructor(type, ...args) {
+		if (type === 'https') {
+			return new https.Agent(...args);
+		} else if (type === 'http') {
+			return new http.Agent(...args);
+		}
+	}
+
+	static createAgent(type, ...args) {
 		if (type === 'https') {
 			return new https.Agent(...args);
 		} else if (type === 'http') {
@@ -246,34 +150,89 @@ class WrappingAgentBase {
 }
 
 export class WrappingAgent extends WrappingAgentBase {
-	constructor(type, netx, agentCreator) {
-		super(type);
+	constructor(type, netx, agentCreator, options) {
+		super(type, options);
 
 		this.netx = netx;
 
-		console.log(agentCreator.toString());
+		let prepOptions = { ...options };
 
-		this.targetAgent = agentCreator();
-		this.targetAgent.shouldLookup = true;
-	}
+		if (type === 'https' && this.netx.plugins.SslPinning?.config.socketOptions) {
+			prepOptions = {
+				...this.netx.plugins.SslPinning?.config.socketOptions,
+				...prepOptions,
+			};
+		}
 
-	lookup = (...args) => this.netx.dns.lookup(...args);
+		this.targetAgent = agentCreator(prepOptions);
 
-	addRequest(request, options) {
-		request.on('socket', socket => {
-			socket.on('secureConnect', () => {
-				const host = socket.servername;
-				const cert = socket.getPeerCertificate();
+		if (this.netx.plugins.DnsOverride) {
+			this.lookup = (...args) => {
+				return this.netx.plugins.DnsOverride.overrides.lookup(...args);
+			}
 
-				const identityCheck = this.netx.pins.checkServerIdentity(host, cert);
-
-				if (identityCheck instanceof Error) {
-					request.emit('error', identityCheck);
-					request.abort();
+			// FIXME: This adds support for HTTP lookup but breaks other Proxy Agents
+			/*const _createSocket = this.targetAgent.createSocket.bind(this.targetAgent);
+			this.targetAgent.createSocket = (req, options, cb) => {
+				const patchFullRequestPath = (request, target) => {
+					const url = new URL(request.path);
+					request.path = `${request.protocol}//${target}${url.pathname}`;
 				}
-			});
-		});
 
-		return this.targetAgent.addRequest(request, options);
+				let targetHost = req.host;
+
+				if (this.lookup) {
+					this.lookup(req.host, (err, address) => {
+						patchFullRequestPath(req, /!*'93.184.215.14' ||*!/ address);
+						_createSocket(req, options, cb);
+					});
+
+					return;
+				}
+
+				patchFullRequestPath(req, targetHost);
+				_createSocket(req, options, cb);
+			}*/
+		}
+
+		if (this.netx.plugins.DnsOverride) {
+			/** Support for https://github.com/TooTallNate/proxy-agents/tree/main/packages/socks-proxy-agent */
+			this.targetAgent.shouldLookup = true;
+
+			/** HTTP Proxy Agent experimental. TODO: Finish this */
+			/*this.targetAgent.connectOpts = {
+				...this.targetAgent.connectOpts,
+				lookup: (...args) => this.lookup(...args),
+			};*/
+		}
+
+		/** Support for https://github.com/TooTallNate/proxy-agents/tree/main/packages/socks-proxy-agent */
+		if (this.netx.plugins.SslPinning) {
+			this.targetAgent.options.socketOptions = this.netx.plugins.SslPinning?.config.socketOptions;
+		}
+
+		this.addRequest = (request, options) => {
+			if (this.netx.plugins.SslPinning) {
+				request.on('socket', socket => {
+					socket.on('secureConnect', () => {
+						const host = socket.servername;
+						const cert = socket.getPeerCertificate();
+
+						const identityCheck = this.netx.plugins.SslPinning.overrides.checkServerIdentity(host, cert);
+
+						if (identityCheck instanceof Error) {
+							request.emit('error', identityCheck);
+							request.abort();
+						}
+					});
+				});
+			}
+
+			if (this.netx.plugins.DnsOverride) {
+				options.lookup = (...args) => this.lookup(...args);
+			}
+
+			return this.targetAgent.addRequest(request, options);
+		};
 	}
 }

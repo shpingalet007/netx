@@ -1,7 +1,6 @@
 import chai from "chai";
 
 import { NetAxis } from "../src/netaxis.js";
-import { List } from "../src/helpers.js";
 import tls from "tls";
 import dns from "dns";
 import {DnsOverride} from "../src/plugins/dns-override.js";
@@ -22,7 +21,7 @@ const netx = new NetAxis({
 describe("Security", () => {
     it("List protection", () => {
         try {
-            netx.list = new List({});
+            netx.list = {};
         } catch (err) {
             chai.expect(err.message).to.contain("Cannot assign to read only");
         }
@@ -30,7 +29,7 @@ describe("Security", () => {
         Object.defineProperty(netx, "#readonly", { value: false });
 
         try {
-            netx.list = new List({});
+            netx.list = {};
         } catch (err) {
             chai.expect(err.message).to.contain("Cannot assign to read only");
         }

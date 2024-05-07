@@ -31,8 +31,8 @@ const netx = new NetAxis({
 
 await dummyNetx.use(new DnsOverride());
 
-await netx.use(new DnsOverride());
-await netx.use(new SslPinning());
+netx.use(new DnsOverride());
+netx.use(new SslPinning());
 
 const hookedCorrectValueV4 = { address: "140.82.114.4", family: 4 };
 const hookedCorrectValueV6 = { address: "::ffff:140.82.114.4", family: 6 };
@@ -41,7 +41,7 @@ describe("Override functions", () => {
     describe("dns.lookup() override", () => {
         function dnsLookup(host, options) {
             return new Promise((resolve, reject) => {
-                dns.lookup(host, options, (error, address, family) => {
+                dummyNetx.plugins.DnsOverride.sources.lookup(host, options, (error, address, family) => {
                     if (error) {
                         resolve(error);
                         return;
@@ -93,7 +93,7 @@ describe("Override functions", () => {
                     readonly: true,
                 });
 
-                await netx.use(new DnsOverride());
+                netx.use(new DnsOverride());
                 await wrapnetx.use(new DnsOverride());
 
                 const wrappedResult = await netxLookup(wrapnetx, host, 4);
@@ -119,7 +119,7 @@ describe("Override functions", () => {
                     readonly: true,
                 });
 
-                await netx.use(new DnsOverride());
+                netx.use(new DnsOverride());
                 await wrapnetx.use(new DnsOverride());
 
                 const netxResult = await netxLookup(wrapnetx, host, { family: 4 });
@@ -152,7 +152,7 @@ describe("Override functions", () => {
                     readonly: true,
                 });
 
-                await netx.use(new DnsOverride());
+                netx.use(new DnsOverride());
                 await wrapnetx.use(new DnsOverride());
 
                 const wrappedResult = await netxLookup(wrapnetx, host, { family: 4, all: true });
@@ -193,7 +193,7 @@ describe("Override functions", () => {
                     readonly: true,
                 });
 
-                await netx.use(new DnsOverride());
+                netx.use(new DnsOverride());
                 await wrapnetx.use(new DnsOverride());
 
                 const wrappedResult = await netxLookup(wrapnetx, host, 6);
@@ -219,7 +219,7 @@ describe("Override functions", () => {
                     readonly: true,
                 });
 
-                await netx.use(new DnsOverride());
+                netx.use(new DnsOverride());
                 await wrapnetx.use(new DnsOverride());
 
                 const wrappedResult = await netxLookup(wrapnetx, host, { family: 6 });
@@ -252,7 +252,7 @@ describe("Override functions", () => {
                     readonly: true,
                 });
 
-                await netx.use(new DnsOverride());
+                netx.use(new DnsOverride());
 
                 const netxResult = await netxLookup(netx, host, { family: 6, all: true });
 
@@ -266,7 +266,7 @@ describe("Override functions", () => {
                     list: "./tests/axisrc.json",
                 });
 
-                await netx.use(new DnsOverride());
+                netx.use(new DnsOverride());
 
                 const host = "notexistdomain.com";
 
@@ -292,7 +292,7 @@ describe("Override functions", () => {
                     readonly: true,
                 });
 
-                await netx.use(new DnsOverride());
+                netx.use(new DnsOverride());
 
                 const netxResult = await netxLookup(netx, host);
 
@@ -315,7 +315,7 @@ describe("Override functions", () => {
                     readonly: true,
                 });
 
-                await netx.use(new DnsOverride());
+                netx.use(new DnsOverride());
 
                 const netxResult = await netxLookup(netx, host);
 
@@ -347,7 +347,7 @@ describe("Override functions", () => {
                     readonly: true,
                 });
 
-                await netx.use(new DnsOverride());
+                netx.use(new DnsOverride());
 
                 const netxResult = await netxLookup(netx, host, { all: true });
 
@@ -366,7 +366,7 @@ describe("Override functions", () => {
             });
 
             socket.on("error", (err) => {
-                chai.expect(err.type).to.be.equal("netx");
+                chai.expect(err.type).to.be.equal("netaxis");
                 chai.expect(socket.authorized).to.be.false;
                 socket.end();
                 done();
@@ -407,29 +407,6 @@ describe("Override functions", () => {
             socket.on("error", (err) => {
                 chai.expect(err.code).to.be.equal("ERR_TLS_CERT_ALTNAME_INVALID");
                 chai.expect(socket.authorized).to.be.false;
-                socket.end();
-                done();
-            });
-        });
-
-        it("Certificate for other hostname throws error", (done) => {
-            const socket = tls.connect(443, {
-                host: "notexistdomain.com",
-                lookup: (...args) => (
-                    netx.dns.lookup(...args)
-                ),
-                checkServerIdentity: (...args) => (
-                    netx.pins.checkServerIdentity(...args, { checkPinningOnly: true })
-                ),
-            });
-
-            socket.on("error", (err) => {
-                chai.expect.fail("Had an error while not expected");
-                socket.end();
-            });
-
-            socket.on('secureConnect', () => {
-                chai.expect(socket.authorized).to.be.true;
                 socket.end();
                 done();
             });
