@@ -27,23 +27,27 @@ export class NetAxis {
     warn: console.warn,
   };
 
-  constructor(configs) {
-    this.id = (Math.random() + 1).toString(36).substring(7);
+  constructor(config = {}) {
+    let loadedConfig = {};
 
-    const configPath =
-      configs?.listPath || NetAxis.defaultConfigurations.listPath;
-    const fileConfig = NetAxis.fsConfigProvider(configPath);
+    if (typeof config === 'string') {
+      let configPath = config;
+
+      configPath = configPath.endsWith(".json") ? configPath : path.join(configPath, NetAxis.defaultConfigPath);
+
+      loadedConfig = NetAxis.fsConfigProvider(configPath);
+    } else {
+      loadedConfig = {...config};
+    }
 
     const configurations = {
       ...NetAxis.defaultConfigurations,
-      ...fileConfig,
-      ...configs,
+      ...loadedConfig,
     };
     const {
       debug,
       readonly,
       protectGlobal,
-      listPath,
       pluginConfigs,
       list,
       overrideAll,
@@ -57,10 +61,6 @@ export class NetAxis {
       pluginConfigs,
       overrideAll,
     };
-
-    this.config.listPath = listPath.endsWith(".json")
-      ? listPath
-      : path.join(listPath, NetAxis.defaultConfigurations.listPath);
 
     this.#readonly = readonly;
     this.#protectGlobal = protectGlobal;
@@ -96,12 +96,19 @@ export class NetAxis {
   }
 
   use(plugin, options) {
-    plugin.instantiate(this, options);
-    this.plugins[plugin.constructor.name] = plugin;
+    let pluginInstance = plugin;
+
+    if (typeof plugin === 'function') {
+      pluginInstance = new plugin();
+    }
+
+    pluginInstance.instantiate(this, options);
+    this.plugins[pluginInstance.constructor.name] = pluginInstance;
   }
 
+  static defaultConfigPath = "axisrc.json";
+
   static defaultConfigurations = {
-    listPath: "axisrc.json",
     list: {},
     debug: false,
     readonly: true,
@@ -170,7 +177,7 @@ export class NetAxis {
 
       if (plugin.isProtected) {
         this.plugins[pluginName].SelfStatic.target.netaxis = true;
-        this.plugins[pluginName].constructor.protect?.();
+        this.plugins[pluginName].protect?.();
       }
     }
 

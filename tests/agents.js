@@ -84,7 +84,7 @@ describe("Agents support", () => {
       },
     });
 
-    netx.use(new DnsOverride());
+    netx.use(DnsOverride);
 
     it("Check native HTTP/S Agents", async () => {
       async function checkNative(url) {
@@ -148,8 +148,8 @@ describe("Agents support", () => {
       },
     });
 
-    netx.use(new DnsOverride());
-    netx.use(new SslPinning(), {
+    netx.use(DnsOverride);
+    netx.use(SslPinning, {
       checkPinningOnly: true,
       socketOptions: {
         rejectUnauthorized: false,

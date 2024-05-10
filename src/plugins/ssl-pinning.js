@@ -97,8 +97,4 @@ export class SslPinning extends OverridePlugin {
       return untrustedCert;
     }
   }
-
-  static protect() {
-    SslPinning.target = Object.freeze(SslPinning.target);
-  }
 }

@@ -70,9 +70,9 @@ export class OverridePlugin {
 
     if (!this.config.override && !this.axisInstance.config.overrideAll) {
       targetObj = OverridePlugin.wrapModule(targetObj);
-    }
 
-    this.isProtected = this.config.protectCore;
+      this.isProtected = this.config.protectCore;
+    }
 
     const mountPoint = this.SelfStatic.mountPoint;
 
@@ -129,6 +129,10 @@ export class OverridePlugin {
         },
       },
     );
+  }
+
+  protect() {
+    this.SelfStatic.target = Object.freeze(this.SelfStatic.target);
   }
 
   static DefaultInstantiateOptions = {
