@@ -37,9 +37,20 @@ export class SslPinning extends OverridePlugin {
   static List = SslPinningList;
 
   static name = "SslPinning";
+  static logName = "ssl-pinning";
+  static logColor = "brightCyan";
   static target = tls;
+  static targetName = "tls";
   static mountPoint = "pins";
   static configParam = "sslPinning";
+
+  instantiate(axisInstance, options) {
+    super.instantiate(axisInstance, options);
+
+    if (this.config.checkPinningOnly) {
+      this.#warnGeneralDisabled();
+    }
+  }
 
   overrides = {
     checkServerIdentity: (...args) => this.#checkServerIdentity(...args),
@@ -47,22 +58,18 @@ export class SslPinning extends OverridePlugin {
 
   #checkServerIdentity(hostname, cert) {
     if (!this.config.checkPinningOnly) {
-      this.axisInstance.logger.info(
+      this.logger.log(
         `General SSL security checks are enabled on host ${hostname}`,
       );
 
       const err = this.sources.checkServerIdentity(hostname, cert);
 
       if (err) {
-        const msg = `Certificate checks failed for ${hostname}`;
-        this.axisInstance.logger.warn(`${msg}, ${err.code}`);
+        SslPinning.assignErrorId(err);
+        this.#logError(err, hostname);
 
         return err;
       }
-
-      this.axisInstance.logger.info(
-        `General SSL security checks of host ${hostname} passed`,
-      );
     }
 
     const pins = this.list.getPinning(hostname);
@@ -72,19 +79,16 @@ export class SslPinning extends OverridePlugin {
     const isSslPinned = pins.length !== 0;
     const foundSslPin = pins.some((p) => p === sslFingerprint);
 
-    this.axisInstance.logger.info(
-      `Host ${hostname} expects pin ${sslFingerprint}`,
-    );
+    this.logger.debug(`Host ${hostname} expects pin ${sslFingerprint.bold}`);
 
     const checksStateMsg = !isSslPinned
       ? `SSL pins not specified for ${hostname}, omitting checks`
       : `SSL pins found for ${hostname}, doing checks`;
 
-    this.axisInstance.logger.info(checksStateMsg);
+    this.logger.debug(checksStateMsg);
 
     if (isSslPinned && !foundSslPin) {
-      const msg = `Certificate checks failed for ${hostname}`;
-      this.axisInstance.logger.warn(msg);
+      const msg = `NetAxis SSL pinning check failed for ${hostname}`;
 
       const untrustedCert = new Error(msg);
       untrustedCert.type = "netaxis";
@@ -94,7 +98,50 @@ export class SslPinning extends OverridePlugin {
       untrustedCert.code = "NETAXIS_UNTRUSTED_CERT_IN_CHAIN";
       untrustedCert.cert = cert;
 
+      SslPinning.assignErrorId(untrustedCert);
+      this.#logError(untrustedCert, hostname);
+
       return untrustedCert;
     }
+
+    if (isSslPinned) {
+      this.#logPinningPassed(hostname);
+    }
+  }
+
+  static assignErrorId(err) {
+    if (err.netaxisId) {
+      return;
+    }
+
+    err.netaxisId = Math.random().toString(16).slice(2, 8);
+  }
+
+  #warnGeneralDisabled(hostname) {
+    this.logger.warn(`General SSL security checks are disabled`.yellow);
+  }
+
+  #logPinningFailed(hostname) {
+    this.logger.info(
+      `Certificate checks pinning failed for host ${hostname}`.red,
+    );
+  }
+
+  #logPinningPassed(hostname) {
+    this.logger.info(
+      `Certificate checks pinning passed for host ${hostname}`.green,
+    );
+  }
+
+  #logError(err, hostname) {
+    if (err.code === "NETAXIS_UNTRUSTED_CERT_IN_CHAIN") {
+      this.#logPinningFailed(hostname);
+      return;
+    }
+
+    this.logger.info(
+      `Certificate checks error ${err.netaxisId} for host ${hostname}, ${err.code}`
+        .red,
+    );
   }
 }

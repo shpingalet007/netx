@@ -124,7 +124,10 @@ export class DnsOverride extends OverridePlugin {
   static List = DnsOverrideList;
 
   static name = "DnsOverride";
+  static logName = "dns-override";
+  static logColor = "magenta";
   static target = dns;
+  static targetName = "dns";
   static mountPoint = "dns";
   static configParam = "dnsOverride";
 
@@ -146,7 +149,7 @@ export class DnsOverride extends OverridePlugin {
     options = DnsOverride.defaultLookupOptions,
     callback,
   ) => {
-    this.axisInstance.logger.info(`Looking DNS records for ${hostname}`);
+    this.logger.info(`Looking DNS records for ${hostname}`);
 
     const optionsIsNumber = Number.isInteger(options);
     const optionsIsObject =
@@ -165,9 +168,17 @@ export class DnsOverride extends OverridePlugin {
       const allAddresses = this.list.getAllAddresses(hostname);
 
       if (!allAddresses) {
+        this.logger.info(
+          `Associations not found for ${hostname}, sending real DNS records`,
+        );
+
         this.sources.lookup(hostname, options, callback);
         return;
       }
+
+      this.logger.info(
+        `Associations found for ${hostname}, sending them instead of real DNS records`,
+      );
 
       const addressesPrepared = allAddresses.map((record) => {
         record.address = record.ip;
@@ -185,7 +196,7 @@ export class DnsOverride extends OverridePlugin {
     const address = this.list.getAddress(hostname, requestedFamily);
 
     if (address) {
-      this.axisInstance.logger.info(
+      this.logger.info(
         `Associations found for ${hostname}, sending them instead of real DNS records`,
       );
 
@@ -193,7 +204,7 @@ export class DnsOverride extends OverridePlugin {
       return;
     }
 
-    this.axisInstance.logger.info(
+    this.logger.info(
       `Associations not found for ${hostname}, sending real DNS records`,
     );
 

@@ -16,6 +16,7 @@
   "license": "GPL-3.0-or-later",
   "dependencies": {
     "better-logging": "^5.0.0",
+    "colors": "^1.4.0",
     "node-fetch": "^3.3.1"
   },
   "devDependencies": {

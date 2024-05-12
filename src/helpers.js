@@ -41,11 +41,16 @@ export class PluginList {
 
 export class OverridePlugin {
   static name = "no name";
+  static logName = "no log name";
+  static logColor = "grey";
   static target = "no target";
+  static targetName = "no target name";
   static isModule = false;
   static mountPoint = false;
   static configParam = false;
   static listParams = false;
+
+  static flags = {};
 
   SelfStatic = this.constructor;
 
@@ -55,10 +60,49 @@ export class OverridePlugin {
   config = {};
   list = {};
 
-  instantiate(axisInstance, options) {
-    let targetObj = this.SelfStatic.target;
+  loggerBadge = (x) =>
+    "[".grey + this.SelfStatic.logName[this.SelfStatic.logColor] + "]".grey;
 
+  instantiate(axisInstance, options = {}) {
     this.axisInstance = axisInstance;
+
+    this.logger = {
+      debug: (...a) => this.axisInstance.logger.debug(this.loggerBadge(), ...a),
+      error: (...a) => this.axisInstance.logger.error(this.loggerBadge(), ...a),
+      info: (...a) => this.axisInstance.logger.info(this.loggerBadge(), ...a),
+      log: (...a) => this.axisInstance.logger.log(this.loggerBadge(), ...a),
+      warn: (...a) => this.axisInstance.logger.warn(this.loggerBadge(), ...a),
+    };
+
+    const targetName = this.SelfStatic.targetName;
+
+    let targetObj =
+      axisInstance.overrides[targetName] || this.SelfStatic.target;
+
+    if (
+      targetObj.netaxis &&
+      this.SelfStatic.flags.patchFirst &&
+      !options.ignorePatchFirst
+    ) {
+      this.axisInstance.logger.error("---------------------------");
+      this.axisInstance.logger.error(
+        `Plugin ${this.SelfStatic.name} must be utilized first to ensure expected behavior.`,
+      );
+      this.axisInstance.logger.error(
+        `Currently, its functionality may result in unexpected outcomes.`,
+      );
+      this.axisInstance.logger.error(
+        `Module ${this.SelfStatic.targetName} has already been patched by ${targetObj.netaxisPlugin}.`,
+      );
+      this.axisInstance.logger.error(
+        "Developer may set flag".yellow,
+        " ignorePatchFirst: true ".bgRed,
+        "to ignore priority issues.".yellow,
+      );
+      this.axisInstance.logger.error("---------------------------");
+
+      throw Error("Priority!!");
+    }
 
     const fileOpts = this.parseConfig(this.axisInstance.config);
 
@@ -66,6 +110,13 @@ export class OverridePlugin {
       ...OverridePlugin.DefaultInstantiateOptions,
       ...fileOpts,
       ...options,
+    };
+
+    const pluginAgentOptions = this.SelfStatic.prepareAgentOptions(this.config);
+
+    this.axisInstance.agentOptions = {
+      ...this.axisInstance.agentOptions,
+      ...pluginAgentOptions,
     };
 
     if (!this.config.override && !this.axisInstance.config.overrideAll) {
@@ -86,8 +137,15 @@ export class OverridePlugin {
       targetObj[overrideKey] = this.overrides[overrideKey];
     }
 
+    targetObj.netaxis = true;
+    targetObj.netaxisPlugin = this.SelfStatic.logName;
+
+    if (!this.config.override && !this.axisInstance.config.overrideAll) {
+      this.axisInstance.overrides[targetName] = targetObj;
+    }
+
     if (mountPoint) {
-      axisInstance[mountPoint] = targetObj;
+      this.axisInstance[mountPoint] = targetObj;
     }
 
     this.list = this.parseList(this.axisInstance._list);
@@ -99,6 +157,10 @@ export class OverridePlugin {
 
   parseList(NetAxisList) {
     return new this.SelfStatic.List(NetAxisList);
+  }
+
+  protect() {
+    this.SelfStatic.target = Object.freeze(this.SelfStatic.target);
   }
 
   static wrapModule(target) {
@@ -131,8 +193,8 @@ export class OverridePlugin {
     );
   }
 
-  protect() {
-    this.SelfStatic.target = Object.freeze(this.SelfStatic.target);
+  static prepareAgentOptions(config) {
+    return config.socketOptions || {};
   }
 
   static DefaultInstantiateOptions = {
@@ -168,76 +230,54 @@ export class WrappingAgent extends WrappingAgentBase {
 
     let prepOptions = { ...options };
 
-    if (
-      type === "https" &&
-      this.netx.plugins.SslPinning?.config.socketOptions
-    ) {
+    if (type === "https" && this.netx.overrides.tls) {
       prepOptions = {
-        ...this.netx.plugins.SslPinning?.config.socketOptions,
+        ...this.netx.plugins.agentOptions,
         ...prepOptions,
       };
     }
 
     this.targetAgent = agentCreator(prepOptions);
 
-    if (this.netx.plugins.DnsOverride) {
-      this.lookup = (...args) => {
-        return this.netx.plugins.DnsOverride.overrides.lookup(...args);
-      };
+    if (this.netx.overrides.dns) {
+      if (this.netx.overrides.dns.lookup) {
+        this.lookup = this.netx.overrides.dns.lookup;
 
-      // FIXME: This adds support for HTTP lookup but breaks other Proxy Agents
-      /*const _createSocket = this.targetAgent.createSocket.bind(this.targetAgent);
-			this.targetAgent.createSocket = (req, options, cb) => {
-				const patchFullRequestPath = (request, target) => {
-					const url = new URL(request.path);
-					request.path = `${request.protocol}//${target}${url.pathname}`;
-				}
-
-				let targetHost = req.host;
-
-				if (this.lookup) {
-					this.lookup(req.host, (err, address) => {
-						patchFullRequestPath(req, /!*'93.184.215.14' ||*!/ address);
-						_createSocket(req, options, cb);
-					});
-
-					return;
-				}
-
-				patchFullRequestPath(req, targetHost);
-				_createSocket(req, options, cb);
-			}*/
+        /** Support for https://github.com/TooTallNate/proxy-agents/tree/main/packages/socks-proxy-agent */
+        this.targetAgent.shouldLookup = true;
+      }
     }
 
-    if (this.netx.plugins.DnsOverride) {
+    if (this.netx.overrides.tls) {
       /** Support for https://github.com/TooTallNate/proxy-agents/tree/main/packages/socks-proxy-agent */
-      this.targetAgent.shouldLookup = true;
+      this.targetAgent.options.socketOptions = this.netx.agentOptions;
 
-      /** HTTP Proxy Agent experimental. TODO: Finish this */
-      /*this.targetAgent.connectOpts = {
-				...this.targetAgent.connectOpts,
-				lookup: (...args) => this.lookup(...args),
-			};*/
-    }
-
-    /** Support for https://github.com/TooTallNate/proxy-agents/tree/main/packages/socks-proxy-agent */
-    if (this.netx.plugins.SslPinning) {
-      this.targetAgent.options.socketOptions =
-        this.netx.plugins.SslPinning?.config.socketOptions;
+      const _createConnection = this.targetAgent.createConnection.bind(
+        this.targetAgent,
+      );
+      this.targetAgent.createConnection = (port, host, options) => {
+        return _createConnection(
+          {
+            ...port,
+            checkServerIdentity: this.netx.overrides.tls.checkServerIdentity,
+          },
+          host,
+          options,
+        );
+      };
     }
 
     this.addRequest = (request, options) => {
-      if (this.netx.plugins.SslPinning) {
+      if (this.netx.overrides.tls) {
         request.on("socket", (socket) => {
           socket.on("secureConnect", () => {
             const host = socket.servername;
             const cert = socket.getPeerCertificate();
 
-            const identityCheck =
-              this.netx.plugins.SslPinning.overrides.checkServerIdentity(
-                host,
-                cert,
-              );
+            const identityCheck = this.netx.overrides.tls.checkServerIdentity(
+              host,
+              cert,
+            );
 
             if (identityCheck instanceof Error) {
               request.emit("error", identityCheck);
@@ -247,7 +287,7 @@ export class WrappingAgent extends WrappingAgentBase {
         });
       }
 
-      if (this.netx.plugins.DnsOverride) {
+      if (this.netx.overrides.dns) {
         options.lookup = (...args) => this.lookup(...args);
       }
 

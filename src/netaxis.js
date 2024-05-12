@@ -3,6 +3,9 @@ import fs from "fs";
 import https from "https";
 import http from "http";
 
+/** Don't remove either if unused */
+import colors from "colors";
+
 import betterLogging from "better-logging";
 
 // TODO: Finish Socket Agent in future
@@ -18,8 +21,10 @@ export class NetAxis {
   config = {};
   plugins = {};
 
+  overrides = {};
+  agentOptions = {};
+
   logger = {
-    logLevel: -1,
     debug: console.debug,
     error: console.error,
     info: console.info,
@@ -27,31 +32,31 @@ export class NetAxis {
     warn: console.warn,
   };
 
+  loggerBadge = (x) => "[".grey + "netaxis".blue + "]".grey;
+  loggerFormat = (ctx) =>
+    `${ctx.time} ${ctx.type} ${this.loggerBadge()} ${ctx.msg}`;
+
   constructor(config = {}) {
     let loadedConfig = {};
 
-    if (typeof config === 'string') {
+    if (typeof config === "string") {
       let configPath = config;
 
-      configPath = configPath.endsWith(".json") ? configPath : path.join(configPath, NetAxis.defaultConfigPath);
+      configPath = configPath.endsWith(".json")
+        ? configPath
+        : path.join(configPath, NetAxis.defaultConfigPath);
 
       loadedConfig = NetAxis.fsConfigProvider(configPath);
     } else {
-      loadedConfig = {...config};
+      loadedConfig = { ...config };
     }
 
     const configurations = {
       ...NetAxis.defaultConfigurations,
       ...loadedConfig,
     };
-    const {
-      debug,
-      readonly,
-      protectGlobal,
-      pluginConfigs,
-      list,
-      overrideAll,
-    } = configurations;
+    const { debug, readonly, protectGlobal, pluginConfigs, list, overrideAll } =
+      configurations;
 
     this.config = {
       debug,
@@ -67,7 +72,10 @@ export class NetAxis {
 
     this._list = list;
 
-    betterLogging(this.logger);
+    betterLogging(this.logger, {
+      format: this.loggerFormat,
+    });
+    this.logger.logLevel = 2;
 
     if (debug) {
       this.logger.logLevel = 4;
@@ -98,7 +106,7 @@ export class NetAxis {
   use(plugin, options) {
     let pluginInstance = plugin;
 
-    if (typeof plugin === 'function') {
+    if (typeof plugin === "function") {
       pluginInstance = new plugin();
     }
 
