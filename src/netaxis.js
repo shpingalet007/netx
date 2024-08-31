@@ -22,7 +22,8 @@ export class NetAxis {
   plugins = {};
 
   overrides = {};
-  agentOptions = {};
+
+  agentPatches = [];
 
   logger = {
     debug: console.debug,
@@ -55,8 +56,15 @@ export class NetAxis {
       ...NetAxis.defaultConfigurations,
       ...loadedConfig,
     };
-    const { debug, readonly, protectGlobal, pluginConfigs, list, overrideAll } =
-      configurations;
+    const {
+      debug,
+      readonly,
+      protectGlobal,
+      pluginConfigs,
+      list,
+      overrideAll,
+      socketOptions,
+    } = configurations;
 
     this.config = {
       debug,
@@ -65,6 +73,7 @@ export class NetAxis {
       list,
       pluginConfigs,
       overrideAll,
+      socketOptions,
     };
 
     this.#readonly = readonly;
@@ -192,23 +201,29 @@ export class NetAxis {
     Object.defineProperty(module, "NetAxis", Object.freeze(NetAxis));
   }
 
-  // TODO: Finish Socket Agent in future
-  createAgent(protocol, args) {
-    return this.agentCreator(args)({ protocol });
-  }
-
-  agentCreator() {
+  agentCreator(options) {
     return ({ protocol }) => {
+      const preparedOpts = {
+        ...this.config.socketOptions,
+        ...options,
+      };
+
       if (protocol.includes("https")) {
         return new WrappingAgent(
           "https",
           this,
           (opts) => new https.Agent(opts),
+          preparedOpts,
         );
       }
 
       if (protocol.includes("http")) {
-        return new WrappingAgent("http", this, (opts) => new http.Agent(opts));
+        return new WrappingAgent(
+          "http",
+          this,
+          (opts) => new http.Agent(opts),
+          preparedOpts,
+        );
       }
 
       throw Error(`Unsupported protocol ${protocol}`);

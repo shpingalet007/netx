@@ -55,6 +55,12 @@ export class OverridePlugin {
   SelfStatic = this.constructor;
 
   overrides = {};
+  patches = {
+    /*"connect": {
+      before: () => {},
+      after: () => {},
+    }*/
+  };
   sources = {};
 
   config = {};
@@ -92,7 +98,7 @@ export class OverridePlugin {
         `Currently, its functionality may result in unexpected outcomes.`,
       );
       this.axisInstance.logger.error(
-        `Module ${this.SelfStatic.targetName} has already been patched by ${targetObj.netaxisPlugin}.`,
+        `Module ${this.SelfStatic.targetName} has already been patched by ${targetObj.netaxisPlugin.SelfStatic.logName}.`,
       );
       this.axisInstance.logger.error(
         "Developer may set flag".yellow,
@@ -112,17 +118,14 @@ export class OverridePlugin {
       ...options,
     };
 
-    const pluginAgentOptions = this.SelfStatic.prepareAgentOptions(this.config);
-
-    this.axisInstance.agentOptions = {
-      ...this.axisInstance.agentOptions,
-      ...pluginAgentOptions,
-    };
-
     if (!this.config.override && !this.axisInstance.config.overrideAll) {
       targetObj = OverridePlugin.wrapModule(targetObj);
 
       this.isProtected = this.config.protectCore;
+
+      if (this.patchAgent) {
+        this.axisInstance.agentPatches.push(this.patchAgent.bind(this));
+      }
     }
 
     const mountPoint = this.SelfStatic.mountPoint;
@@ -137,8 +140,33 @@ export class OverridePlugin {
       targetObj[overrideKey] = this.overrides[overrideKey];
     }
 
+    const patchKeys = Object.keys(this.patches);
+
+    for (let i = 0; i < patchKeys.length; i++) {
+      const patchKey = patchKeys[i];
+
+      this.sources[patchKey] = targetObj[patchKey];
+
+      // V2 Patching
+      {
+        const patches = OverridePlugin.getPatchesSorted(
+          this.patches[patchKey].dynamicInstructions,
+        );
+
+        targetObj[patchKey] = (...args) => {
+          /** Arguments patching */
+          OverridePlugin.applyArgPatches(args, patches.arg);
+
+          const result = this.sources[patchKey](...args);
+
+          /** Results patching */
+          return OverridePlugin.applyResPatches(result, patches.res);
+        };
+      }
+    }
+
     targetObj.netaxis = true;
-    targetObj.netaxisPlugin = this.SelfStatic.logName;
+    targetObj.netaxisPlugin = this;
 
     if (!this.config.override && !this.axisInstance.config.overrideAll) {
       this.axisInstance.overrides[targetName] = targetObj;
@@ -193,8 +221,108 @@ export class OverridePlugin {
     );
   }
 
-  static prepareAgentOptions(config) {
-    return config.socketOptions || {};
+  static dynamicPatch(target, prop, value) {
+    const getDeep = (target, prop) => {
+      const keys = prop.split(".");
+      let value = target;
+
+      let last;
+
+      for (let i = 0; i < keys.length; i++) {
+        last = value;
+        value = value[keys[i]];
+      }
+
+      return value?.bind?.(last);
+    };
+    const setDeep = (target, prop, value) => {
+      const keys = prop.split(".");
+      const lastKey = keys.pop();
+
+      const obj = keys.reduce((acc, key) => acc && acc[key], target);
+      if (obj && lastKey) {
+        obj[lastKey] = value;
+      }
+    };
+
+    const source = getDeep(target, prop);
+
+    let val = value;
+
+    if (typeof value === "function") {
+      val = (...args) => {
+        return value(source, target, ...args);
+      };
+    }
+
+    setDeep(target, prop, val);
+    return target;
+  }
+
+  static getPatchesSorted(patches) {
+    const ArgPatchRegexp = /^\$(\d+)\./;
+    const ResPatchRegexp = /^\$R(\d+)?\./;
+
+    let arg = [];
+    let res = [];
+
+    Object.keys(patches).forEach((insName) => {
+      if (ArgPatchRegexp.test(insName)) {
+        const index = insName.match(ArgPatchRegexp)[1];
+        const path = insName.split(".").slice(1).join(".");
+        const fullPath = `${index}.${path}`;
+
+        arg.push({
+          path: fullPath,
+          value: patches[insName],
+        });
+
+        return;
+      }
+
+      if (ResPatchRegexp.test(insName)) {
+        const index = insName.match(ResPatchRegexp)[1] || 0;
+        const path = insName.split(".").slice(1).join(".");
+        const fullPath = `${index}.${path}`;
+
+        res.push({
+          path: fullPath,
+          value: patches[insName],
+        });
+      }
+    });
+
+    return { arg, res };
+  }
+
+  static applyArgPatches(target, patches) {
+    let patchedTarget = target;
+
+    for (let i = 0; i < patches.length; i++) {
+      const patch = patches[i];
+
+      OverridePlugin.dynamicPatch(patchedTarget, patch.path, patch.value);
+    }
+
+    return patchedTarget;
+  }
+
+  static applyResPatches(target, patches) {
+    let patchedTarget = target;
+
+    for (let i = 0; i < patches.length; i++) {
+      const patch = patches[i];
+
+      if (!Array.isArray(patchedTarget) && patch.path.startsWith("0.")) {
+        const path = patch.path.split(".").slice(1).join(".");
+
+        OverridePlugin.dynamicPatch(patchedTarget, path, patch.value);
+      } else {
+        OverridePlugin.dynamicPatch(patchedTarget, patch.path, patch.value);
+      }
+    }
+
+    return patchedTarget;
   }
 
   static DefaultInstantiateOptions = {
@@ -206,14 +334,6 @@ export class OverridePlugin {
 // TODO: Finish Socket Agent in future
 class WrappingAgentBase {
   constructor(type, ...args) {
-    if (type === "https") {
-      return new https.Agent(...args);
-    } else if (type === "http") {
-      return new http.Agent(...args);
-    }
-  }
-
-  static createAgent(type, ...args) {
     if (type === "https") {
       return new https.Agent(...args);
     } else if (type === "http") {
@@ -239,6 +359,8 @@ export class WrappingAgent extends WrappingAgentBase {
 
     this.targetAgent = agentCreator(prepOptions);
 
+    this.netx.agentPatches.forEach((p) => p(this.targetAgent));
+
     if (this.netx.overrides.dns) {
       if (this.netx.overrides.dns.lookup) {
         this.lookup = this.netx.overrides.dns.lookup;
@@ -250,21 +372,7 @@ export class WrappingAgent extends WrappingAgentBase {
 
     if (this.netx.overrides.tls) {
       /** Support for https://github.com/TooTallNate/proxy-agents/tree/main/packages/socks-proxy-agent */
-      this.targetAgent.options.socketOptions = this.netx.agentOptions;
-
-      const _createConnection = this.targetAgent.createConnection.bind(
-        this.targetAgent,
-      );
-      this.targetAgent.createConnection = (port, host, options) => {
-        return _createConnection(
-          {
-            ...port,
-            checkServerIdentity: this.netx.overrides.tls.checkServerIdentity,
-          },
-          host,
-          options,
-        );
-      };
+      this.targetAgent.options.socketOptions = this.netx.config.socketOptions;
     }
 
     this.addRequest = (request, options) => {

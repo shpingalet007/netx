@@ -52,13 +52,9 @@ export class SslPinning extends OverridePlugin {
     }
   }
 
-  overrides = {
-    checkServerIdentity: (...args) => this.#checkServerIdentity(...args),
-  };
-
   #checkServerIdentity(hostname, cert) {
     if (!this.config.checkPinningOnly) {
-      this.logger.log(
+      this.logger.info(
         `General SSL security checks are enabled on host ${hostname}`,
       );
 
@@ -108,6 +104,33 @@ export class SslPinning extends OverridePlugin {
       this.#logPinningPassed(hostname);
     }
   }
+
+  #connect(options) {
+    const socket = this.sources.connect({
+      ...options,
+      checkServerIdentity: this.overrides.checkServerIdentity,
+    });
+
+    return socket;
+  }
+
+  patchAgent(agent) {
+    const patchOptions = (port, host, options) => {
+      port.checkServerIdentity = this.overrides.checkServerIdentity;
+    };
+
+    const _createConnection = agent.createConnection.bind(agent);
+    agent.createConnection = (port, host, options) => {
+      patchOptions(port, host, options);
+
+      return _createConnection(port, host, options);
+    };
+  }
+
+  overrides = {
+    checkServerIdentity: this.#checkServerIdentity.bind(this),
+    connect: this.#connect.bind(this),
+  };
 
   static assignErrorId(err) {
     if (err.netaxisId) {
